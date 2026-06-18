@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+*.so
+.DS_Store
+results/run.log
+**/build/
+gazebo/scripts/traj.csv
+gazebo/scripts/landing.csv

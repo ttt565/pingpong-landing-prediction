@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<sdf version="1.9">
+  <world name="table_tennis">
+    <physics name="1ms" type="dart">
+      <max_step_size>0.001</max_step_size>   <!-- matches ttsim truth dt -->
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <!-- logs every link pose to topic /world/table_tennis/pose/info for the recorder -->
+    <plugin filename="gz-sim-pose-publisher-system" name="gz::sim::systems::PosePublisher">
+      <publish_link_pose>true</publish_link_pose>
+      <use_pose_vector_msg>true</use_pose_vector_msg>
+      <update_frequency>1000</update_frequency>
+    </plugin>
+
+    <gravity>0 0 -9.81</gravity>
+
+    <!-- ground 0.76 m below the table top -->
+    <model name="ground"><static>true</static>
+      <link name="l"><collision name="c"><geometry><plane><normal>0 0 1</normal>
+        <size>20 20</size></plane></geometry></collision>
+        <visual name="v"><pose>0 0 -0.76 0 0 0</pose><geometry><box><size>20 20 0.01</size></box></geometry>
+        <material><ambient>0.3 0.3 0.3 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <!-- table: top surface at z=0 (landing plane). 2.74 x 1.525 m -->
+    <model name="table"><static>true</static>
+      <pose>1.37 0 -0.025 0 0 0</pose>
+      <link name="top">
+        <collision name="c"><geometry><box><size>2.74 1.525 0.05</size></box></geometry>
+          <surface><bounce><restitution_coefficient>0.9</restitution_coefficient><threshold>0</threshold></bounce>
+          <friction><ode><mu>0.25</mu><mu2>0.25</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v"><geometry><box><size>2.74 1.525 0.05</size></box></geometry>
+          <material><ambient>0.0 0.35 0.2 1</ambient><diffuse>0.0 0.4 0.25 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <include><uri>model://pingpong_ball</uri></include>
+  </world>
+</sdf>

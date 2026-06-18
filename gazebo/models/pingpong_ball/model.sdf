@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<sdf version="1.9">
+  <model name="pingpong_ball">
+    <!-- start 0.2 m in, centered, 0.30 m above the table top (z=0) -->
+    <pose>0.2 0 0.3 0 0 0</pose>
+    <link name="ball_link">
+      <inertial>
+        <mass>0.0027</mass>
+        <inertia>
+          <ixx>4.32e-7</ixx><iyy>4.32e-7</iyy><izz>4.32e-7</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+        </inertia>
+      </inertial>
+      <collision name="col">
+        <geometry><sphere><radius>0.02</radius></sphere></geometry>
+        <surface>
+          <bounce><restitution_coefficient>0.9</restitution_coefficient><threshold>0</threshold></bounce>
+          <friction><ode><mu>0.25</mu><mu2>0.25</mu2></ode></friction>
+        </surface>
+      </collision>
+      <visual name="vis">
+        <geometry><sphere><radius>0.02</radius></sphere></geometry>
+        <material><ambient>1 0.5 0 1</ambient><diffuse>1 0.55 0 1</diffuse></material>
+      </visual>
+    </link>
+
+    <!-- aero + launch; edit init_linear / init_angular per working condition.
+         topspin = +y; constants match ttsim/physics.py -->
+    <plugin filename="AeroLaunch" name="ttsim::AeroLaunch">
+      <link_name>ball_link</link_name>
+      <mass>0.0027</mass>
+      <drag_coeff>0.1117</drag_coeff>
+      <magnus_coeff>0.0016</magnus_coeff>
+      <init_linear>6 0 0.9</init_linear>
+      <init_angular>0 400 0</init_angular>
+    </plugin>
+  </model>
+</sdf>
