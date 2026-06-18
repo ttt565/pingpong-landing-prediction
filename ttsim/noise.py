@@ -35,7 +35,7 @@ def add_noise(positions, speeds, sigma0, alpha, p_miss, rng,
     sig = sig * np.where(is_bad, bad_mult, 1.0)
     noisy = positions + rng.standard_normal(positions.shape) * sig[:, None]
     keep = rng.random(n) >= p_miss
-    conf = (1.0 / sig) * np.exp(rng.normal(0.0, conf_noise, n))  # noisy 1/sigma
+    conf = (1.0 / np.maximum(sig, 1e-9)) * np.exp(rng.normal(0.0, conf_noise, n))  # noisy 1/sigma
     return noisy, sig, keep, conf
 
 

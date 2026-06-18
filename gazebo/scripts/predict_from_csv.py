@@ -16,8 +16,17 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-from ttsim.noise import add_noise            # noqa: E402
-from ttsim import estimators as E            # noqa: E402
+from ttsim.noise import add_noise                       # noqa: E402
+from ttsim.physics import predict_landing, R_BALL       # noqa: E402
+from ttsim.estimators import fit_trajectory             # noqa: E402
+
+OMEGA_BOUND = 1100.0  # per-component |omega_i| bound rad/s (NOT a norm bound)
+
+
+def _land_xy(theta):
+    # land at z = ball radius to match Gazebo's finite-radius first contact
+    lp, _ = predict_landing(theta, table_z=R_BALL)
+    return None if lp is None else lp[:2]
 
 
 def load(path, cols):
@@ -52,14 +61,17 @@ def main():
                                        0.0, rng, bad_frac=a.bad_frac)
     ot, op, cf, sg = fr_t[keep], noisy[keep], conf[keep], sig[keep]
 
+    # all fits omega-bounded (per-component) so a few bad frames can't explode spin
     preds = {
-        "M0": E.predict_M0(ot, op),
-        "M1": E.predict_M1(ot, op),
-        "M3_conf": E.predict_M3_conf(ot, op, confidence=cf),
-        "M3_oracle": E.predict_M3_oracle(ot, op, sigma_true=sg),
+        "M0": _land_xy(fit_trajectory(ot, op, fit_omega=False)),
+        "M1": _land_xy(fit_trajectory(ot, op, fit_omega=True, omega_bound=OMEGA_BOUND)),
+        "M3_conf": _land_xy(fit_trajectory(ot, op, weights=cf ** 2, fit_omega=True,
+                                           omega_bound=OMEGA_BOUND)),
+        "M3_oracle": _land_xy(fit_trajectory(ot, op, weights=1.0 / np.maximum(sg, 1e-6) ** 2,
+                                             fit_omega=True, omega_bound=OMEGA_BOUND)),
     }
     print(f"Gazebo truth landing: x={true_xy[0]:.3f} y={true_xy[1]:.3f} m "
-          f"({len(ot)} frames, bad_frac={a.bad_frac})")
+          f"({len(ot)} frames, bad_frac={a.bad_frac}, landing plane z={R_BALL} m)")
     for m, xy in preds.items():
         err = np.nan if xy is None else 100 * np.linalg.norm(xy - true_xy)
         print(f"   {m:10s} landing error = {err:6.2f} cm")

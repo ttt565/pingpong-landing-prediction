@@ -1,5 +1,11 @@
 # Phase 1 — Table-tennis first-landing prediction (sim) & the M3 "killer experiment"
 
+> ⚠️ **Read [LIMITATIONS.md](LIMITATIONS.md) before citing any number.** This is a
+> mechanism sandbox under synthetic assumptions (inverse crime, baked-in confidence
+> calibration, no robust baselines). The headline figures are **not** real-system claims.
+> The fair, bounded operating-point M3 advantage is **+2.17 cm [95% CI 1.82, 2.52]**, not
+> the unbounded +2.8 cm — and still rests on the assumptions listed there.
+
 Goal of this phase: **before building any hardware**, decide whether precision-weighted
 residual correction (M3) can beat the plain residual/physics fit (M1) by *more than the
 real-world measurement floor* (~2–4 cm). If even an idealized M3 can't, the thesis needs

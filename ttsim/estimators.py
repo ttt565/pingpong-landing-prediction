@@ -29,11 +29,13 @@ def _initial_guess(obs_t, obs_p, fit_omega):
     return np.concatenate([p0, v0, [0.0, 0.0, 0.0]]) if fit_omega else np.concatenate([p0, v0])
 
 
-def fit_trajectory(obs_t, obs_p, weights=None, fit_omega=True, fixed_omega=None, dt_fit=4e-3):
+def fit_trajectory(obs_t, obs_p, weights=None, fit_omega=True, fixed_omega=None,
+                   omega_bound=None, dt_fit=4e-3):
     """Weighted NLS fit with an analytic (batched finite-diff) Jacobian.
 
     weights are per-frame (length N); None -> uniform. M1 vs M3 differ ONLY here.
     fixed_omega: spin value to hold when fit_omega=False (default 0 = no spin).
+    omega_bound: if set, constrain |omega_i| <= omega_bound rad/s (physical prior).
     """
     if weights is None:
         weights = np.ones(len(obs_t))
@@ -62,7 +64,14 @@ def fit_trajectory(obs_t, obs_p, weights=None, fit_omega=True, fixed_omega=None,
             J[:, j] = ((sw * (preds[j + 1] - obs_p)).ravel() - r0) / steps[j]
         return J
 
-    sol = least_squares(resid, x0, jac=jac, method="trf", x_scale=xscale, max_nfev=80)
+    if fit_omega and omega_bound is not None:
+        lb = np.r_[np.full(6, -np.inf), np.full(3, -omega_bound)]
+        ub = np.r_[np.full(6, np.inf), np.full(3, omega_bound)]
+        bounds = (lb, ub)
+    else:
+        bounds = (-np.inf, np.inf)
+    sol = least_squares(resid, x0, jac=jac, method="trf", x_scale=xscale,
+                        bounds=bounds, max_nfev=80)
     return theta_of(sol.x)
 
 

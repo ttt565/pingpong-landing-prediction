@@ -46,8 +46,10 @@ def rk4_step(state, omega, dt):
     return state + (dt / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
 
 
-def simulate(p0, v0, omega, dt=1e-3, t_max=2.0):
-    """Integrate from (p0,v0) with constant spin until first downward z=0 crossing.
+def simulate(p0, v0, omega, dt=1e-3, t_max=2.0, table_z=TABLE_Z):
+    """Integrate from (p0,v0) with constant spin until first downward crossing of
+    `table_z`. Use table_z=0 for a point-ball landing plane, or table_z=R_BALL to
+    match a finite-radius ball's first *contact* (e.g. the Gazebo bridge).
 
     Returns (times, positions, velocities, landing_pos, landing_t). landing_* are
     None if the ball never lands within t_max.
@@ -63,8 +65,8 @@ def simulate(p0, v0, omega, dt=1e-3, t_max=2.0):
         t += dt
         times.append(t)
         states.append(state.copy())
-        if prev[2] > TABLE_Z and state[2] <= TABLE_Z and state[5] < 0:
-            frac = (prev[2] - TABLE_Z) / (prev[2] - state[2])
+        if prev[2] > table_z and state[2] <= table_z and state[5] < 0:
+            frac = (prev[2] - table_z) / (prev[2] - state[2])
             landing_pos = prev[:3] + frac * (state[:3] - prev[:3])
             landing_t = (t - dt) + frac * dt
             break
@@ -123,7 +125,7 @@ def predict_positions(theta, obs_times, dt=4e-3):
     return predict_positions_batch(theta[None, :], obs_times, dt)[0]
 
 
-def predict_landing(theta, dt=1e-3, t_max=2.0):
+def predict_landing(theta, dt=1e-3, t_max=2.0, table_z=TABLE_Z):
     p0, v0, omega = theta[:3], theta[3:6], theta[6:9]
-    _, _, _, lp, lt = simulate(p0, v0, omega, dt, t_max)
+    _, _, _, lp, lt = simulate(p0, v0, omega, dt, t_max, table_z=table_z)
     return lp, lt
