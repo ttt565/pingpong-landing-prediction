@@ -96,13 +96,16 @@ def main():
     Hbar = np.mean([r["_H"] for r in res])
     log(f"\n(A) OPERATING POINT  sigma0=8mm alpha=1 p_miss=0.10 fps=120 "
         f"bad_frac=0.20 bad_mult=6   (mean H={Hbar:.2f}, n={len(res)})")
-    log(f"    {'method':10s} {'mean':>7s} {'median':>7s} {'p90':>7s}  (cm)")
+    log(f"    {'method':10s} {'mean':>7s} {'median':>7s} {'p90':>7s} {'valid':>9s}  (cm)")
     means = {}
     for mth in methods_full:
-        e = col(res, mth)
-        e = e[np.isfinite(e)]
+        raw = col(res, mth)
+        e = raw[np.isfinite(raw)]
         means[mth] = e.mean()
-        log(f"    {mth:10s} {e.mean():7.2f} {np.median(e):7.2f} {np.percentile(e,90):7.2f}")
+        # per-method validity: a method that fails more often would otherwise look
+        # cleaner because NaNs are dropped -- surface n_valid/n_total explicitly
+        log(f"    {mth:10s} {e.mean():7.2f} {np.median(e):7.2f} {np.percentile(e,90):7.2f} "
+            f"{len(e):4d}/{len(raw):<4d}")
     g_or = boot_gap_ci(col(res, "M1"), col(res, "M3_oracle"))
     g_cf = boot_gap_ci(col(res, "M1"), col(res, "M3_conf"))
     log(f"    gap M1-M3oracle = {g_or[0]:+.2f} cm  [95% CI {g_or[1]:+.2f},{g_or[2]:+.2f}]")

@@ -21,6 +21,12 @@ from .noise import sigma_profile
 _STEPS = np.array([1e-4, 1e-4, 1e-4, 1e-3, 1e-3, 1e-3, 1e-1, 1e-1, 1e-1])
 _XSCALE = np.array([0.1, 0.1, 0.1, 1.0, 1.0, 1.0, 100.0, 100.0, 100.0])
 
+# Default spin constraint for ALL production predictors (M1/M3/...). PER-COMPONENT
+# box bound: |omega_i| <= OMEGA_BOUND, so ||omega|| can reach OMEGA_BOUND*sqrt(3).
+# Without this, a few bad frames send the unconstrained fit's omega to 1e4-1e5 rad/s
+# (true ~400) and inflate M1's error. A proper norm/axis prior is a v2 item.
+OMEGA_BOUND = 1100.0
+
 
 def _initial_guess(obs_t, obs_p, fit_omega):
     p0 = obs_p[0].copy()
@@ -85,7 +91,7 @@ def predict_M0(obs_t, obs_p, **kw):
 
 
 def predict_M1(obs_t, obs_p, **kw):
-    return _landing_xy(fit_trajectory(obs_t, obs_p, fit_omega=True))
+    return _landing_xy(fit_trajectory(obs_t, obs_p, fit_omega=True, omega_bound=OMEGA_BOUND))
 
 
 def predict_M1_spinknown(obs_t, obs_p, true_omega, **kw):
@@ -96,7 +102,7 @@ def predict_M1_spinknown(obs_t, obs_p, true_omega, **kw):
 
 def predict_M3_oracle(obs_t, obs_p, sigma_true, **kw):
     w = 1.0 / np.maximum(sigma_true, 1e-6) ** 2
-    return _landing_xy(fit_trajectory(obs_t, obs_p, weights=w, fit_omega=True))
+    return _landing_xy(fit_trajectory(obs_t, obs_p, weights=w, fit_omega=True, omega_bound=OMEGA_BOUND))
 
 
 def predict_M3_conf(obs_t, obs_p, confidence, **kw):
@@ -104,13 +110,13 @@ def predict_M3_conf(obs_t, obs_p, confidence, **kw):
     (Pi ~ confidence^2). This is the deployable M3."""
     w = np.asarray(confidence) ** 2
     w = w / np.mean(w)
-    return _landing_xy(fit_trajectory(obs_t, obs_p, weights=w, fit_omega=True))
+    return _landing_xy(fit_trajectory(obs_t, obs_p, weights=w, fit_omega=True, omega_bound=OMEGA_BOUND))
 
 
 def predict_M3_rule(obs_t, obs_p, sigma0, alpha, **kw):
     """Realizable precision: 2-stage. First an unweighted (M1) fit to get a smooth
     speed estimate per frame, then weight by the (known-form) sigma(speed)."""
-    theta1 = fit_trajectory(obs_t, obs_p, fit_omega=True)
+    theta1 = fit_trajectory(obs_t, obs_p, fit_omega=True, omega_bound=OMEGA_BOUND)
     # speeds from the fitted trajectory via finite difference of predicted positions
     dt = 1e-3
     pp = predict_positions(theta1, np.clip(obs_t, dt, None), 2e-3)
@@ -118,7 +124,7 @@ def predict_M3_rule(obs_t, obs_p, sigma0, alpha, **kw):
     speeds = np.linalg.norm((pp - pm) / dt, axis=1)
     sig_hat = sigma_profile(speeds, sigma0, alpha)
     w = 1.0 / np.maximum(sig_hat, 1e-6) ** 2
-    return _landing_xy(fit_trajectory(obs_t, obs_p, weights=w, fit_omega=True))
+    return _landing_xy(fit_trajectory(obs_t, obs_p, weights=w, fit_omega=True, omega_bound=OMEGA_BOUND))
 
 
 def predict_M4(obs_t, clean_p, **kw):

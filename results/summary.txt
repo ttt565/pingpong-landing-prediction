@@ -2,38 +2,38 @@ Phase-1 killer experiment  (trials/cond=150, workers=7)
 ======================================================================
 
 (A) OPERATING POINT  sigma0=8mm alpha=1 p_miss=0.10 fps=120 bad_frac=0.20 bad_mult=6   (mean H=0.98, n=150)
-    method        mean  median     p90  (cm)
-    M0            6.48    5.96   11.22
-    M1            4.34    3.48    8.29
-    M3_conf       1.85    1.71    3.26
-    M3_oracle     1.60    1.45    3.11
-    M4            0.00    0.00    0.00
-    gap M1-M3oracle = +2.75 cm  [95% CI +2.21,+3.29]
-    gap M1-M3conf   = +2.50 cm  [95% CI +1.97,+3.05]
+    method        mean  median     p90     valid  (cm)
+    M0            6.48    5.96   11.22  150/150 
+    M1            3.66    3.03    7.30  150/150 
+    M3_conf       1.70    1.61    2.96  150/150 
+    M3_oracle     1.46    1.35    2.38  150/150 
+    M4            0.00    0.00    0.00  150/150 
+    gap M1-M3oracle = +2.20 cm  [95% CI +1.81,+2.58]
+    gap M1-M3conf   = +1.96 cm  [95% CI +1.57,+2.35]
     real-world floor ~ 3.0 cm
 
 (B) HETEROSCEDASTICITY SWEEP  (vary bad_frac -> H), fps=120
     bad_frac     H     M1  M3orac  M3conf   gapOr   gapCf  (cm)
-        0.00  0.01   1.35    1.35    1.53   +0.00   -0.18
-        0.05  0.93   3.49    1.45    1.69   +2.03   +1.80
-        0.10  1.15   3.55    1.51    1.71   +2.03   +1.84
-        0.20  1.15   5.00    1.47    1.77   +3.53   +3.23
-        0.35  0.96  14.16    1.76    1.99  +12.40  +12.16
-        0.50  0.78  13.30    2.10    2.36  +11.20  +10.93
+        0.00  0.01   1.26    1.26    1.44   +0.00   -0.18
+        0.05  0.93   2.45    1.39    1.61   +1.07   +0.84
+        0.10  1.15   3.13    1.44    1.61   +1.69   +1.53
+        0.20  1.15   4.15    1.33    1.62   +2.82   +2.54
+        0.35  0.96   5.88    1.54    1.72   +4.33   +4.15
+        0.50  0.78   6.55    1.89    2.10   +4.65   +4.44
 
 (C) FRAME-RATE SWEEP  (full arc), bad_frac=0.20 bad_mult=8
       fps n_obs     M1  M3orac   gapOr   gapCf
-      120    34   7.26    1.52   +5.73   +5.54
-       80    23  10.57    2.11   +8.46   +8.22
-       60    17  17.86    2.38  +15.47  +14.54
-       45    13  21.61    4.12  +17.49  +17.03
+      120    34   4.53    1.40   +3.13   +2.95
+       80    23   6.06    1.77   +4.29   +4.06
+       60    17   6.50    2.06   +4.44   +4.22
+       45    13   8.11    2.75   +5.36   +5.13
 
 ======================================================================
 VERDICT
   - speed-only heteroscedasticity over a single arc is negligible (H~0.02):
     precision weighting on speed alone cannot help first-landing prediction.
   - with realistic bad/low-confidence frames, the M3-oracle ceiling reaches
-    up to +12.40 cm over M1 (see sweep); it exceeds the ~3 cm
+    up to +4.65 cm over M1 (see sweep); it exceeds the ~3 cm
     floor only at high H (frequent bad detections) and/or few frames.
   - deployable M3_conf recovers a fraction of the oracle gap.
   => GO only if the real perception pipeline shows high within-arc H

@@ -3,18 +3,20 @@ Experiment B: convergence + spin observability  (trials=150, fps=120, sigma0=6mm
   median landing error (cm) by #frames observed from launch
 
     k  t_obs      M0      M1  M1_spinknown  M3conf spin_penalty
-    8    67ms   27.19   71.96          7.07   85.51       +64.89
-   10    83ms   26.63   72.13          4.99   64.06       +67.14
-   12   100ms   24.76   44.69          3.98   43.49       +40.71
-   15   125ms   21.90   25.59          2.45   24.19       +23.15
-   20   167ms   17.61   17.30          1.60   21.53       +15.70
-   25   208ms   13.59    5.04          1.09    6.72        +3.94
-   30   250ms   10.01    2.30          0.76    2.70        +1.54
+    8    67ms   27.19   42.53          7.07   43.47       +35.46
+   10    83ms   26.63   34.99          4.99   37.46       +29.99
+   12   100ms   24.76   28.42          3.98   28.34       +24.44
+   15   125ms   21.90   17.30          2.45   19.28       +14.86
+   20   167ms   17.61    8.49          1.60    8.84        +6.89
+   25   208ms   13.59    3.25          1.09    3.82        +2.16
+   30   250ms   10.01    1.90          0.76    2.07        +1.14
 
-READING:
-  - At k=8 frames (67 ms of arc): M1=72.0cm vs M1_spinknown=7.1cm.
-    spin-observability penalty = 64.9cm -> SPIN dominates early-prediction error.
+READING (all fits omega-bounded per-component |w_i|<=1100):
+  - At k=8 frames (67 ms of arc): M1=42.5cm vs M1_spinknown=7.1cm.
+    unknown-spin estimation penalty = 35.5cm -> unknown-spin DoF dominate early-prediction error.
   - With true spin known, error is already ~7.1cm at 8 frames: geometry/noise is fine; inferring omega is the hard part.
-  - Implication: for EARLY first-landing prediction, the lever is spin
-    identifiability (more arc / a spin prior), not per-frame precision weighting.
-    Precision weighting helps the high-H / bad-frame regime (see run_killer.py).
+  - NOTE: this is the *estimation DoF tied to unknown spin*, NOT yet a rigorous
+    'spin unobservable' claim -- that needs Jacobian-singular-value / Fisher
+    analysis (v2). The penalty also mixes local minima and omega over-parameterization.
+  - Implication: the lever for early prediction is more arc / a spin prior,
+    not per-frame precision weighting (which helps the bad-frame regime instead).

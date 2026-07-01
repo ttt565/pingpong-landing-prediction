@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 *.so
 .DS_Store
-results/run.log
+results/*.log
 **/build/
 gazebo/scripts/traj.csv
 gazebo/scripts/landing.csv

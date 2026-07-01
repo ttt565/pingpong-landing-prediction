@@ -41,11 +41,13 @@ def _cb(msg: Pose_V):
         if p.name.endswith(BALL_LINK):
             x, y, z = p.position.x, p.position.y, p.position.z
             if traj and traj[-1][3] > RADIUS and z <= RADIUS:
-                f = (traj[-1][3] - RADIUS) / (traj[-1][3] - z)
-                lx = traj[-1][1] + f * (x - traj[-1][1])
-                ly = traj[-1][2] + f * (y - traj[-1][2])
-                landed.update(done=True, x=lx, y=ly, t=t)
-                print(f"LANDING  x={lx:.4f} y={ly:.4f} m  t={t:.4f} s  "
+                tp, xp, yp, zp = traj[-1]
+                f = (zp - RADIUS) / (zp - z)
+                lx = xp + f * (x - xp)
+                ly = yp + f * (y - yp)
+                lt = tp + f * (t - tp)   # interpolate crossing time too (was frame time)
+                landed.update(done=True, x=lx, y=ly, t=lt)
+                print(f"LANDING  x={lx:.4f} y={ly:.4f} m  t={lt:.4f} s  "
                       f"(n_frames={len(traj)})")
             traj.append((t, x, y, z))
 

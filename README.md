@@ -42,9 +42,11 @@ squares** against the physics model, then integrate to the landing point
 | `M3_oracle` | `1/σ_true²`                | ceiling of *any* precision scheme |
 | `M4`        | uniform, noise-free obs    | upper bound |
 
-`H = std(σ)/mean(σ)` over the observed frames is the **heteroscedasticity index** — the
-single number that predicts whether precision weighting can help (H=0 ⇒ optimal weights are
-uniform ⇒ M3≡M1).
+`H = std(σ)/mean(σ)` over the observed frames is the **heteroscedasticity index** — *one
+diagnostic among several* for whether precision weighting can help (H=0 ⇒ optimal weights
+are uniform ⇒ M3≡M1). It is **not** a standalone go/no-go metric: the actual gain also
+depends on the bad-frame rate, *where* in the arc bad frames fall, their temporal
+correlation, and how well confidence is calibrated to true σ. See [LIMITATIONS.md](LIMITATIONS.md).
 
 ## Run
 
@@ -75,12 +77,14 @@ on a few recorded arcs. That number tells you whether M3 is worth the hardware.
 
 ## Experiment B — convergence + spin observability (`run_convergence.py`)
 
-Predicts the landing from only the first *k* frames. Compares `M1` (must infer spin)
-against `M1_spinknown` (true spin handed in). Result (`results/fig4_convergence.png`):
-at 8 frames the spin-inferring error is **~72 cm** while spin-known is **~7 cm** — early
-first-landing error is dominated by **spin unobservability, not perception noise**, and
-precision weighting cannot fix that. The lever for early prediction is more arc / a spin
-prior; precision weighting is for the high-H bad-frame regime instead.
+Predicts the landing from only the first *k* frames (all fits ω-bounded). Compares `M1`
+(must infer spin) against `M1_spinknown` (true spin handed in). Result
+(`results/fig4_convergence.png`): at 8 frames the spin-inferring error is **~43 cm** while
+spin-known is **~7 cm** — early first-landing error is dominated by the **estimation
+degrees-of-freedom tied to unknown spin, not by perception noise**, and precision weighting
+cannot fix that. (This is *not* yet a rigorous "spin unobservable" claim — that needs a
+Jacobian/Fisher analysis; see [LIMITATIONS.md](LIMITATIONS.md).) The lever for early
+prediction is more arc / a spin prior; precision weighting is for the bad-frame regime instead.
 
 ## Repository layout
 

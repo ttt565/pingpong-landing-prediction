@@ -89,16 +89,19 @@ def main():
 
     # verdict
     i_small = 0  # k=8
-    lines += ["", "READING:",
+    dominates = pen[i_small] > curves["M1sk"][i_small]
+    lines += ["", "READING (all fits omega-bounded per-component |w_i|<=1100):",
               f"  - At k={KS[i_small]} frames ({1000*KS[i_small]/FPS:.0f} ms of arc): "
               f"M1={curves['M1'][i_small]:.1f}cm vs M1_spinknown={curves['M1sk'][i_small]:.1f}cm.",
-              f"    spin-observability penalty = {pen[i_small]:.1f}cm -> "
-              f"{'SPIN dominates early-prediction error' if pen[i_small] > curves['M1sk'][i_small] else 'noise, not spin, dominates'}.",
+              f"    unknown-spin estimation penalty = {pen[i_small]:.1f}cm -> "
+              f"{'unknown-spin DoF dominate early-prediction error' if dominates else 'noise, not spin, dominates'}.",
               f"  - With true spin known, error is already ~{curves['M1sk'][i_small]:.1f}cm at "
               f"{KS[i_small]} frames: geometry/noise is fine; inferring omega is the hard part.",
-              "  - Implication: for EARLY first-landing prediction, the lever is spin",
-              "    identifiability (more arc / a spin prior), not per-frame precision weighting.",
-              "    Precision weighting helps the high-H / bad-frame regime (see run_killer.py)."]
+              "  - NOTE: this is the *estimation DoF tied to unknown spin*, NOT yet a rigorous",
+              "    'spin unobservable' claim -- that needs Jacobian-singular-value / Fisher",
+              "    analysis (v2). The penalty also mixes local minima and omega over-parameterization.",
+              "  - Implication: the lever for early prediction is more arc / a spin prior,",
+              "    not per-frame precision weighting (which helps the bad-frame regime instead)."]
 
     print("\n".join(lines))
     with open(os.path.join(RESULTS, "convergence.txt"), "w") as f:
@@ -112,10 +115,10 @@ def main():
     ax.plot(t_ms, curves["M3c"], "s-", color="#2ca02c", label="M3_conf")
     ax.plot(t_ms, curves["M1sk"], "^-", color="#d62728", label="M1 (TRUE spin known)")
     ax.fill_between(t_ms, curves["M1sk"], curves["M1"], color="#1f77b4", alpha=.10,
-                    label="spin-observability penalty")
+                    label="unknown-spin estimation penalty")
     ax.set_xlabel("observation window from launch (ms)  /  more frames →")
     ax.set_ylabel("median landing error (cm)")
-    ax.set_title("Early first-landing prediction: spin observability is the bottleneck")
+    ax.set_title("Early first-landing prediction: unknown-spin DoF dominate (bounded ω)")
     ax.set_ylim(0, min(40, np.nanmax(curves["M1"]) * 1.1))
     ax.legend(); ax.grid(alpha=.3)
     fig.tight_layout(); fig.savefig(os.path.join(RESULTS, "fig4_convergence.png"), dpi=130)

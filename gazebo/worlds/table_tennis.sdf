@@ -18,11 +18,14 @@
 
     <gravity>0 0 -9.81</gravity>
 
-    <!-- ground 0.76 m below the table top -->
+    <!-- ground 0.76 m below the table top. Move the whole MODEL (collision plane
+         included), not just the visual, so the collision plane isn't left at z=0
+         coinciding with the table top and polluting first-contact detection. -->
     <model name="ground"><static>true</static>
+      <pose>0 0 -0.76 0 0 0</pose>
       <link name="l"><collision name="c"><geometry><plane><normal>0 0 1</normal>
         <size>20 20</size></plane></geometry></collision>
-        <visual name="v"><pose>0 0 -0.76 0 0 0</pose><geometry><box><size>20 20 0.01</size></box></geometry>
+        <visual name="v"><geometry><box><size>20 20 0.01</size></box></geometry>
         <material><ambient>0.3 0.3 0.3 1</ambient></material></visual>
       </link>
     </model>
