@@ -100,7 +100,7 @@ def fmt_vec(v):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--seeds", type=int, default=12)
+    ap.add_argument("--seeds", type=int, default=30)
     ap.add_argument("--fps", type=float, default=120)
     ap.add_argument("--sigma0", type=float, default=8.0)
     ap.add_argument("--alpha", type=float, default=1.0)
@@ -111,6 +111,15 @@ def main():
     a = ap.parse_args()
 
     sweep_root = os.path.join(GZ, "sweep_out")
+    os.makedirs(sweep_root, exist_ok=True)
+
+    # manifest: single source of truth for launch params per condition
+    # (consumed by predict_second_bounce.py / calibrate_bounce.py / closure_check.py)
+    with open(os.path.join(sweep_root, "manifest.csv"), "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["condition", "vx", "vy", "vz", "wx", "wy", "wz"])
+        for name, v, wvec in CONDITIONS:
+            w.writerow([name, *v, *wvec])
 
     # ---- phase 1: simulate + record -------------------------------------
     if not a.skip_sim:
@@ -170,8 +179,12 @@ def main():
         md.append(f"| {name} | {fmt_vec(v)} | {fmt_vec(w)} | {c1} | {t1} | {c2} | {t2} |")
 
     md.append("\n## First-landing prediction error, mean ± std cm over seeds\n")
-    md.append("| condition | " + " | ".join(METHODS) + " |")
-    md.append("|---" * (len(METHODS) + 1) + "|")
+    md.append("The gain column is the PAIRED per-seed difference M1 − M3_conf "
+              "(same noise realization for both methods) with a 95% t-interval — "
+              "positive = precision weighting helps.\n")
+    md.append("| condition | " + " | ".join(METHODS) + " | M1−M3_conf gain [95% CI] |")
+    md.append("|---" * (len(METHODS) + 2) + "|")
+    from scipy.stats import t as t_dist
     with open(summary_csv, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["condition", "method", "mean_cm", "std_cm", "seeds"])
@@ -184,6 +197,12 @@ def main():
                 w.writerow([name, m, f"{np.nanmean(e):.3f}",
                             f"{np.nanstd(e):.3f}", len(e)])
                 cells.append(f"{np.nanmean(e):.2f} ± {np.nanstd(e):.2f}")
+            g = np.array(results[name]["M1"]) - np.array(results[name]["M3_conf"])
+            g = g[~np.isnan(g)]
+            half = t_dist.ppf(0.975, len(g) - 1) * g.std(ddof=1) / np.sqrt(len(g))
+            w.writerow([name, "M1_minus_M3conf",
+                        f"{g.mean():.3f}", f"{g.std(ddof=1):.3f}", len(g)])
+            cells.append(f"**{g.mean():.2f}** [{g.mean()-half:.2f}, {g.mean()+half:.2f}]")
             md.append(f"| {name} | " + " | ".join(cells) + " |")
 
     md_path = os.path.join(GZ, "results_sweep.md")

@@ -103,18 +103,23 @@ Same drag+Magnus model inside Gazebo's contact solver via a custom `gz::sim` aer
 plugin, so the prediction/evaluation code runs unchanged on Gazebo trajectories.
 **Executed and validated on WSL2 (Ubuntu 24.04 + Gazebo Harmonic 8.14)**. What runs:
 
-- single serve→record→predict cycle; Gazebo landing agrees with the analytical
-  RK4 landing to 8.8 mm / 1.7 ms (integrator difference);
-- 9-condition launch sweep reproducing the method matrix on DART physics
-  ([gazebo/results_sweep.md](gazebo/results_sweep.md));
+- single serve→record→predict cycle; dynamics closure across all 9 recorded
+  conditions: RK4 and Gazebo land 9.2 mm apart on average, max 11.9 mm
+  ([gazebo/results_closure.md](gazebo/results_closure.md));
+- 9-condition launch sweep reproducing the method matrix on DART physics; the
+  paired M1−M3_conf gain is positive with 95% CI excluding zero in all nine
+  conditions ([gazebo/results_sweep.md](gazebo/results_sweep.md));
 - **M2 second-touchdown prediction** via an impulse bounce model calibrated to
   DART's *measured* effective restitution 0.777 (not the SDF's 0.9) —
-  noise-free mismatch 1.8–7.5 cm; with noise, spin estimation dominates
-  ([gazebo/results_m2.md](gazebo/results_m2.md));
-- **Route B**: two rendered 120 fps cameras → color detection → stereo
-  triangulation (3D RMS 5.3 mm) → same estimators; rendered noise is
-  near-homoscedastic, so M3 ≈ M1 — the killer experiment's H≈0 null observed
-  on real pixels ([gazebo/results_camera.md](gazebo/results_camera.md)).
+  noise-free mismatch 1.8–7.5 cm; with noise M2 is 24–66 cm, and
+  **M2_spinknown collapses it to 3.7–7.8 cm**: spin estimation is the
+  bottleneck, tested not asserted ([gazebo/results_m2.md](gazebo/results_m2.md));
+- **Route B**: rendered stereo cameras → median-background detection →
+  triangulation (3D RMS 5.1 mm sharp / 5.8 mm with motion blur + net
+  occlusion) → same estimators; in BOTH regimes rendered failures are
+  dropouts, residual noise is near-homoscedastic, M3 ≈ M1 — the H≈0 null
+  observed on pixels ([gazebo/results_camera.md](gazebo/results_camera.md),
+  [gazebo/results_camera_blur.md](gazebo/results_camera_blur.md)).
 
 The committed numbers in `results/` still come from the analytical engine. See
 [gazebo/README.md](gazebo/README.md).

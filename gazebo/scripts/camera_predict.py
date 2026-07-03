@@ -74,8 +74,9 @@ def main():
     ap.add_argument("--out", default=None, help="markdown report path")
     a = ap.parse_args()
 
-    side = load(os.path.join(a.rundir, "detections_side.csv"), ["t", "u", "v", "npix"])
-    back = load(os.path.join(a.rundir, "detections_back.csv"), ["t", "u", "v", "npix"])
+    cols = ["t", "u", "v", "npix", "nsharp"]
+    side = load(os.path.join(a.rundir, "detections_side.csv"), cols)
+    back = load(os.path.join(a.rundir, "detections_back.csv"), cols)
     tr = load(os.path.join(a.rundir, "traj.csv"), ["t", "x", "y", "z"])
     ld = load(os.path.join(a.rundir, "landing.csv"), ["x", "y", "t"])
     t_land = ld["t"][0]
@@ -96,7 +97,10 @@ def main():
             continue
         times.append(t)
         pts.append(p)
-        conf.append(np.sqrt(side["npix"][i] * back["npix"][j]))
+        # sharp-core pixel count = the TrackNet-peak-score stand-in: collapses
+        # under motion blur / partial occlusion (+1: a valid all-blur detection
+        # keeps a nonzero weight)
+        conf.append(np.sqrt((side["nsharp"][i] + 1) * (back["nsharp"][j] + 1)))
     if len(pts) < 8:
         sys.exit(f"only {len(pts)} stereo matches — not enough to fit")
     times = np.array(times)
@@ -133,10 +137,13 @@ def main():
         err = np.nan if xy is None else 100 * float(np.linalg.norm(xy - true_xy))
         print(f"   {m:8s} landing error = {err:6.2f} cm")
         lines.append(f"| {m} | {err:.2f} |")
-    lines.append("\nNoise here is real rendering/quantization noise — roughly "
-                 "homoscedastic per arc, so M3 ≈ M1 is the EXPECTED outcome "
-                 "(that is the H≈0 null of the killer experiment, measured on "
-                 "rendered pixels instead of assumed).")
+    lines.append("\nNoise here is real rendering noise (quantization; in blur "
+                 "mode also exposure smear + net occlusion). Within-arc it "
+                 "stays near-homoscedastic — hard failures drop out instead of "
+                 "degrading — so M3 ≈ M1 is the EXPECTED outcome: the killer "
+                 "experiment's H≈0 null, measured on pixels. M3's regime "
+                 "(flaggable bad detections) needs detector-level confusion, "
+                 "which pure rendering does not produce.")
 
     if a.out:
         with open(a.out, "w") as f:

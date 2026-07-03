@@ -24,14 +24,19 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 from ttsim.bounce import bounce_state                    # noqa: E402
 from predict_from_csv import load                        # noqa: E402
 
-# launch spin per sweep condition (must mirror sweep.py CONDITIONS)
-SPINS = {
-    "v45_flat": (0, 0, 0), "v45_top200": (0, 200, 0), "v45_top400": (0, 400, 0),
-    "v60_flat": (0, 0, 0), "v60_top200": (0, 200, 0), "v60_top400": (0, 400, 0),
-    "v60_back200": (0, -200, 0), "v70_top400": (0, 400, 0),
-    "v60_mixed": (50, 350, 80),
-}
 WIN = (0.004, 0.040)   # fit window: t1 +/- [4, 40] ms, contact frames excluded
+
+
+def load_manifest(rundir):
+    """condition -> spin vector, from the sweep manifest next to the run dirs."""
+    mpath = os.path.join(os.path.dirname(rundir.rstrip("/")), "manifest.csv")
+    if not os.path.exists(mpath):
+        return {}
+    import csv
+    with open(mpath) as f:
+        return {row["condition"]: (float(row["wx"]), float(row["wy"]),
+                                   float(row["wz"]))
+                for row in csv.DictReader(f)}
 
 
 def vel_fit(tr, t_lo, t_hi):
@@ -47,13 +52,14 @@ def main():
     ap.add_argument("rundirs", nargs="+")
     a = ap.parse_args()
 
+    spins = load_manifest(a.rundirs[0]) if a.rundirs else {}
     rows = []
     for rd in a.rundirs:
         rd = rd.rstrip("/")
         name = os.path.basename(rd)
         f_traj = os.path.join(rd, "traj_full.csv")
         f_b = os.path.join(rd, "bounces.csv")
-        if not (os.path.exists(f_traj) and os.path.exists(f_b) and name in SPINS):
+        if not (os.path.exists(f_traj) and os.path.exists(f_b) and name in spins):
             continue
         tr = load(f_traj, ["t", "x", "y", "z"])
         t1 = load(f_b, ["n", "x", "y", "t"])["t"][0]
@@ -61,7 +67,7 @@ def main():
         v_out = vel_fit(tr, t1 + WIN[0], t1 + WIN[1])
         if v_in is None or v_out is None:
             continue
-        w_in = np.array(SPINS[name], float)
+        w_in = np.array(spins[name], float)
         v_pred, w_pred = bounce_state(v_in, w_in)
         rows.append((name, v_in, v_out, v_pred, w_in))
 

@@ -1,6 +1,6 @@
 # Gazebo working-condition sweep
 
-9 conditions x 12 noise seeds, fps=120, sigma0=8 mm, alpha=1, bad_frac=0.2. Truth = DART (Gazebo Harmonic), recording at 1000 Hz. Landing plane z = ball radius.
+9 conditions x 30 noise seeds, fps=120, sigma0=8 mm, alpha=1, bad_frac=0.2. Truth = DART (Gazebo Harmonic), recording at 1000 Hz. Landing plane z = ball radius.
 
 ## Ground truth per condition (from Gazebo)
 
@@ -18,14 +18,16 @@
 
 ## First-landing prediction error, mean ± std cm over seeds
 
-| condition | M0 | M1 | M3_conf | M3_oracle |
-|---|---|---|---|---|
-| v45_flat | 1.75 ± 0.73 | 2.17 ± 1.19 | 1.36 ± 0.62 | 1.22 ± 0.51 |
-| v45_top200 | 2.00 ± 1.37 | 2.12 ± 2.04 | 1.39 ± 0.65 | 1.24 ± 0.92 |
-| v45_top400 | 3.09 ± 1.39 | 2.58 ± 1.05 | 1.22 ± 0.61 | 1.27 ± 0.52 |
-| v60_flat | 2.17 ± 1.07 | 2.65 ± 1.57 | 1.68 ± 0.78 | 1.50 ± 0.69 |
-| v60_top200 | 3.83 ± 2.17 | 2.60 ± 1.68 | 1.64 ± 0.99 | 1.45 ± 0.79 |
-| v60_top400 | 5.66 ± 1.86 | 4.13 ± 2.73 | 1.42 ± 0.85 | 1.32 ± 0.98 |
-| v60_back200 | 5.29 ± 1.70 | 3.04 ± 1.04 | 1.82 ± 0.96 | 1.81 ± 0.99 |
-| v70_top400 | 6.30 ± 2.13 | 4.14 ± 2.55 | 1.45 ± 0.91 | 1.37 ± 1.04 |
-| v60_mixed | 5.60 ± 2.26 | 2.91 ± 1.84 | 1.56 ± 0.93 | 1.28 ± 0.53 |
+The gain column is the PAIRED per-seed difference M1 − M3_conf (same noise realization for both methods) with a 95% t-interval — positive = precision weighting helps.
+
+| condition | M0 | M1 | M3_conf | M3_oracle | M1−M3_conf gain [95% CI] |
+|---|---|---|---|---|---|
+| v45_flat | 1.88 ± 0.71 | 2.74 ± 1.75 | 1.25 ± 0.69 | 1.08 ± 0.44 | **1.50** [0.86, 2.14] |
+| v45_top200 | 2.45 ± 1.43 | 2.51 ± 1.82 | 1.38 ± 0.67 | 1.27 ± 0.74 | **1.13** [0.47, 1.79] |
+| v45_top400 | 3.39 ± 1.46 | 2.92 ± 1.39 | 1.25 ± 0.49 | 1.18 ± 0.54 | **1.68** [1.16, 2.19] |
+| v60_flat | 2.38 ± 1.05 | 3.41 ± 2.32 | 1.50 ± 0.82 | 1.31 ± 0.58 | **1.90** [1.04, 2.76] |
+| v60_top200 | 3.36 ± 1.96 | 4.32 ± 3.21 | 1.87 ± 1.03 | 1.64 ± 0.82 | **2.45** [1.29, 3.61] |
+| v60_top400 | 6.01 ± 2.60 | 3.91 ± 2.34 | 1.58 ± 0.88 | 1.32 ± 0.84 | **2.32** [1.37, 3.27] |
+| v60_back200 | 5.42 ± 1.77 | 3.11 ± 2.04 | 1.75 ± 0.90 | 1.50 ± 0.87 | **1.37** [0.44, 2.29] |
+| v70_top400 | 6.73 ± 3.03 | 3.96 ± 2.33 | 1.60 ± 0.92 | 1.33 ± 0.88 | **2.36** [1.41, 3.31] |
+| v60_mixed | 4.99 ± 2.28 | 3.36 ± 1.95 | 1.69 ± 0.96 | 1.46 ± 0.75 | **1.68** [0.95, 2.40] |

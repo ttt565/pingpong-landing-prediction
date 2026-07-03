@@ -6,14 +6,14 @@ but inside Gazebo's rigid-body/contact solver — so the bounce, multi-body and
 is untouched: Gazebo emits a trajectory CSV, the analytical pipeline consumes it.
 
 > **Status: executed and validated** on WSL2 (Ubuntu 24.04, Gazebo Harmonic /
-> gz-sim 8.14.0, DART physics). One default serve (`v0=(6,0,0.9) m/s`,
-> topspin `ω=(0,400,0) rad/s`): Gazebo lands at **x=1.7531 m, t=0.2849 s**;
-> ttsim RK4 from the same post-launch state lands 8.8 mm / 1.7 ms away
-> (integrator difference: DART semi-implicit Euler vs RK4, both dt=1 ms) —
-> the two backends implement the same dynamics. The prediction pipeline runs
-> unchanged on the Gazebo trajectory (see Run below). The numbers in
-> `../results/` still come from the analytical engine; Gazebo's added value is
-> contact/bounce (M2, second-bounce) and the rendered-camera path (Route B).
+> gz-sim 8.14.0, DART physics). Dynamics closure holds across all 9 sweep
+> conditions: ttsim RK4 and Gazebo land **9.2 mm apart on average (max
+> 11.9 mm)** from identical initial states — the integrator gap (DART
+> semi-implicit Euler vs RK4, both dt=1 ms), see
+> [results_closure.md](results_closure.md). The prediction pipeline runs
+> unchanged on Gazebo trajectories. The numbers in `../results/` still come
+> from the analytical engine; Gazebo's added value is contact/bounce (M2,
+> second-bounce) and the rendered-camera path (Route B).
 
 ## Why Gazebo needs a plugin here
 
@@ -28,7 +28,8 @@ with the **same constants as `ttsim/physics.py`** (`drag_coeff=0.1117`,
 
 ```
 worlds/table_tennis.sdf          world: gravity, table (top at z=0)
-worlds/table_tennis_cam.sdf      + lighting + two 120fps cameras (Route B)
+worlds/table_tennis_cam.sdf      + lighting + two 120fps cameras (Route B sharp)
+worlds/table_tennis_cam_blur.sdf + net + 500Hz cameras + sensor noise (Route B blur)
 models/pingpong_ball/            40mm/2.7g ball + PosePublisher + AeroLaunch (edit launch here)
 plugins/aero_launch/             C++ aero+launch System plugin + CMake
 scripts/record_landing.py        pose stream -> traj/landing CSVs; --bounces 2 = M2 truth
@@ -37,10 +38,11 @@ scripts/run.sh                   build plugin -> simulate one serve -> record ->
 scripts/sweep.py                 9-condition launch sweep -> results_sweep.md
 scripts/predict_second_bounce.py M2: fit arc -> bounce model -> 2nd touchdown vs truth
 scripts/calibrate_bounce.py      measure DART's effective bounce response from recordings
-scripts/camera_track.py          Route B: color-detect the ball in both camera streams
+scripts/closure_check.py         RK4-vs-Gazebo landing gap across all recorded conditions
+scripts/camera_track.py          Route B: median-background ball detector (+exposure blend)
 scripts/camera_predict.py        Route B: stereo triangulation -> same estimators
-scripts/run_camera.sh            Route B end-to-end (rendered serve -> prediction)
-sweep_out/, cam_out/             committed ground-truth recordings + summaries
+scripts/run_camera.sh            Route B end-to-end; "blur" arg = realism pack
+sweep_out/, cam_out/, cam_blur_out/  committed ground-truth recordings + summaries
 ```
 
 The ball's world pose comes from a `PosePublisher` attached to the ball **model**
@@ -90,13 +92,15 @@ track's Monte-Carlo matrix is where the statistical claims live)
 Reproduces the method matrix with **DART as the truth backend**: 9 launch
 conditions (speed 4.5–7 m/s; topspin/backspin/sidespin 0–400 rad/s), each
 simulated once and recorded through the **second** touchdown, then evaluated
-over 12 noise seeds. Results: [results_sweep.md](results_sweep.md), raw
-recordings under `sweep_out/`. The analytical track's mechanism carries over
-unchanged: M0 degrades with spin (1.8→6.3 cm), M3_conf ≈ M3_oracle ≈ 1.2–1.8 cm
-in the bad-frame regime.
+over 30 noise seeds. Results: [results_sweep.md](results_sweep.md), raw
+recordings + `manifest.csv` (single source of truth for launch params) under
+`sweep_out/`. The analytical track's mechanism carries over unchanged: M0
+degrades with spin (1.9→6.7 cm), M3_conf ≈ M3_oracle, and the **paired**
+per-seed gain M1−M3_conf is positive with a 95% CI excluding zero in *all
+nine conditions* (point estimates 1.1–2.5 cm).
 
 ```bash
-python3 scripts/sweep.py             # ~3 min: 9 sims + 108 fits
+python3 scripts/sweep.py             # ~4 min: 9 sims + 1080 fits
 python3 scripts/sweep.py --skip-sim  # re-evaluate existing recordings
 ```
 
@@ -106,30 +110,51 @@ Pipeline: fit the pre-bounce arc → integrate to first contact → analytic
 impulse bounce (`ttsim/bounce.py`) → integrate to the second z=R crossing.
 Results: [results_m2.md](results_m2.md).
 
-Two findings worth the trip:
+Three findings worth the trip:
 1. **Calibrate against the backend, not its config**: DART's *effective*
    restitution is **0.777** (measured across all 9 conditions by
    `calibrate_bounce.py`), not the 0.9 in the SDF. Switching E_TABLE to the
    measured value cut the noise-free M2 mismatch from 9–20 cm to **1.8–7.5 cm**.
-2. With perception noise, M2 error is 20–60 cm — dominated by **spin-estimation
+2. With perception noise, M2 error is 24–66 cm — dominated by **spin-estimation
    error amplified through the bounce** (spin sets the tangential impulse AND
-   the second flight's Magnus). Same lesson as Experiment B: the M2 lever is a
-   spin prior, not more precision weighting.
+   the second flight's Magnus).
+3. That claim is now *tested*, not asserted: **M2_spinknown** (same noisy fit,
+   true spin handed in) collapses the error to **3.7–7.8 cm — essentially the
+   bounce-model floor** (M2_clean 1.8–7.5 cm). Same lesson as Experiment B:
+   the M2 lever is a spin prior, not more precision weighting.
 
 ## Route B — rendered cameras (`scripts/run_camera.sh`)
 
 `worlds/table_tennis_cam.sdf` adds two 120 fps 640×480 cameras (side + behind).
-`camera_track.py` color-thresholds the ball per frame (TrackNet stand-in,
-blob size = confidence), `camera_predict.py` triangulates the stereo pair and
-runs the same estimators — **perception noise is now real rendering/pixel
-quantization, not the synthetic Gaussian**. Results: [results_camera.md](results_camera.md).
+`camera_track.py` detects the ball per frame by background subtraction against
+a **temporal-median** background (a mean background absorbs an orange bias
+where the ball's image moves slowly and grows a ghost trail — measured 2.7×
+worse 3D RMS before the fix). Blob size `npix` and sharp-core count `nsharp`
+(the TrackNet-peak-score stand-in) come out per detection;
+`camera_predict.py` triangulates the stereo pair and runs the same
+estimators — **perception noise is real rendering, not the synthetic
+Gaussian**.
 
-Measured on the baseline serve: stereo 3D RMS **5.3 mm**; landing errors
-M0 = 6.24 cm (spin bias), M1 = 0.53 cm, M3_conf = 0.55 cm. M3 ≈ M1 is the
-*expected* outcome — rendered noise is near-homoscedastic per arc (H≈0), which
-is exactly the killer experiment's null, now observed on pixels instead of
-assumed. Heteroscedasticity (and M3's edge) needs motion blur / occlusion /
-detector confusion, which pure ogre2 rendering does not produce.
+Two regimes, one serve each:
+
+| mode | world | noise sources | 3D RMS | M0 | M1 | M3_conf |
+|---|---|---|---|---|---|---|
+| sharp ([results_camera.md](results_camera.md)) | `table_tennis_cam.sdf` | quantization | 5.1 mm | 6.13 | 0.51 | 0.49 cm |
+| blur ([results_camera_blur.md](results_camera_blur.md)) | `table_tennis_cam_blur.sdf` | + full-shutter motion blur (500 Hz renders, `--blend 4` → 125 fps), sensor noise, **net occluding the back camera near landing** | 5.8 mm | 8.68 | 1.47 | 1.45 cm |
+
+```bash
+bash scripts/run_camera.sh          # sharp
+bash scripts/run_camera.sh blur     # realism pack
+```
+
+The punchline is the same in both: **M3 ≈ M1 even under blur + occlusion**,
+because rendered failures manifest as *dropouts* (the occluded/over-blurred
+frames simply vanish — 5 of 62 back-camera frames in blur mode) rather than
+as flaggable degraded detections; the within-arc noise that remains is
+near-homoscedastic (H≈0). This is the killer experiment's null measured on
+pixels, and it sharpens the Phase-1 exit test: M3's regime requires
+*detector-level* confusion (real TrackNet on cluttered scenes) — measure H
+there before investing in it.
 
 Sweep working conditions by editing `<init_linear>` / `<init_angular>` in
 `models/pingpong_ball/model.sdf` (topspin = +y), or script many serves and pipe
