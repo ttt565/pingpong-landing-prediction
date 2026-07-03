@@ -185,14 +185,30 @@ Sample efficiency: **10 labels → 7.3 cm (already at the oracle), 20 → 5.1,
 80 → 3.9 cm.** Two conclusions: (1) a dozen self-labeled serves effectively
 *learn the spin prior* — the board buys the exact lever M2 needs; (2) beyond
 ~40 labels the learner beats the true-spin oracle, because it also absorbs
-the analytic bounce model's systematic bias vs DART. Caveats: valid within
-the training repertoire (the physics model remains the out-of-distribution
-fallback — the learner only adds a correction on top); sim labels are
-noiseless, a real plate's ~cm label noise raises the floor accordingly.
+the analytic bounce model's systematic bias vs DART. The physics model
+remains the out-of-distribution fallback — the learner only adds a
+correction on top.
+
+`scripts/board_robustness.py`
+([results_board_robustness.md](results_board_robustness.md)) then closes the
+two deployment questions:
+
+- **Plate accuracy is not the binding constraint.** With Gaussian label noise
+  up to σ=2 cm (a realistic piezo/mic plate) the result is unchanged
+  (3.9 → 4.0 cm at 80 labels, 5.1 → 5.6 at 20); even a poor σ=5 cm plate
+  still reaches 4.5 cm vs 20.8 physics-only. The residual being corrected is
+  ~20 cm, so the label SNR is ~10:1 and ridge averages the rest out
+  ([fig_board_label_noise.png](fig_board_label_noise.png)).
+- **Learning-while-playing converges in ~20 serves.** Online RLS scored
+  prequentially (predict serve k, then update on its noisy label) reaches the
+  true-spin-oracle level by ~serve 20 and batch-level ~4 cm by serve 50,
+  with or without 2 cm label noise
+  ([fig_board_online.png](fig_board_online.png)).
 
 ```bash
 python3 scripts/board_learn.py --n 120 --jobs 3   # ~7 min: simulate + extract
 python3 scripts/learn_board_residual.py           # instant, from the CSV
+python3 scripts/board_robustness.py               # label-noise + online RLS
 ```
 
 Sweep working conditions by editing `<init_linear>` / `<init_angular>` in

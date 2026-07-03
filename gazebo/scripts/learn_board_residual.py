@@ -61,6 +61,20 @@ def err_cm(dy, dz):
     return 100 * np.hypot(dy, dz)
 
 
+def build_features(d):
+    """Prediction-time features: fitted state + the physics pipeline's own
+    output (pred_t centered on its dataset mean)."""
+    return np.stack([d["vhx"], d["vhy"], d["vhz"],
+                     d["whx"], d["why"], d["whz"],
+                     d["pred_y"], d["pred_z"],
+                     d["pred_t"] - d["pred_t"].mean()], axis=1)
+
+
+def build_residuals(d):
+    return np.stack([d["true_y"] - d["pred_y"],
+                     d["true_z"] - d["pred_z"]], axis=1)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset",
@@ -73,14 +87,8 @@ def main():
     d, n = load_dataset(a.dataset)
     rng = np.random.default_rng(a.seed)
 
-    # all features are available at prediction time (fitted state + the
-    # physics pipeline's own output); pred_t centered on its dataset mean
-    feats = np.stack([d["vhx"], d["vhy"], d["vhz"],
-                      d["whx"], d["why"], d["whz"],
-                      d["pred_y"], d["pred_z"],
-                      d["pred_t"] - d["pred_t"].mean()], axis=1)
-    resid = np.stack([d["true_y"] - d["pred_y"],
-                      d["true_z"] - d["pred_z"]], axis=1)
+    feats = build_features(d)
+    resid = build_residuals(d)
 
     e_phys = err_cm(resid[:, 0], resid[:, 1])
     e_oracle = err_cm(d["true_y"] - d["pred_oracle_y"],
