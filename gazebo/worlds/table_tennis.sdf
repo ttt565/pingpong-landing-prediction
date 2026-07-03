@@ -9,12 +9,9 @@
     <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
     <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
     <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
-    <!-- logs every link pose to topic /world/table_tennis/pose/info for the recorder -->
-    <plugin filename="gz-sim-pose-publisher-system" name="gz::sim::systems::PosePublisher">
-      <publish_link_pose>true</publish_link_pose>
-      <use_pose_vector_msg>true</use_pose_vector_msg>
-      <update_frequency>1000</update_frequency>
-    </plugin>
+    <!-- NOTE: the ball's world pose is published by a PosePublisher attached to
+         the pingpong_ball MODEL (PosePublisher is a model plugin; at world scope
+         it does nothing). See models/pingpong_ball/model.sdf. -->
 
     <gravity>0 0 -9.81</gravity>
 

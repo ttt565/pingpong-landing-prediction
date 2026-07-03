@@ -4,6 +4,8 @@
 #include <gz/sim/Link.hh>
 #include <gz/sim/Model.hh>
 #include <gz/sim/Util.hh>
+#include <gz/sim/components/AngularVelocityCmd.hh>
+#include <gz/sim/components/LinearVelocityCmd.hh>
 
 using namespace ttsim;
 
@@ -55,6 +57,18 @@ void AeroLaunch::PreUpdate(const gz::sim::UpdateInfo &_info,
     link.SetAngularVelocity(_ecm, this->initAngular);
     this->launched = true;
     return;  // let physics integrate one step before we start pushing
+  }
+
+  // (1b) SetLinearVelocity/SetAngularVelocity create *VelocityCmd components.
+  // The physics system re-applies those commands EVERY step and zeroes their
+  // value after each step (it never removes them) — leaving them in the ECM
+  // pins the ball's velocity to zero forever. Remove them once, the step
+  // after launch, so the ball flies ballistically from here on.
+  if (!this->cmdsCleared)
+  {
+    _ecm.RemoveComponent<gz::sim::components::LinearVelocityCmd>(this->linkEntity);
+    _ecm.RemoveComponent<gz::sim::components::AngularVelocityCmd>(this->linkEntity);
+    this->cmdsCleared = true;
   }
 
   // (2) aerodynamic force every step: F = mass * (a_drag + a_magnus)

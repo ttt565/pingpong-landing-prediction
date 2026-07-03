@@ -42,6 +42,7 @@ class AeroLaunch
   private: gz::math::Vector3d initLinear{6.0, 0.0, 0.9};
   private: gz::math::Vector3d initAngular{0.0, 400.0, 0.0};
   private: bool launched{false};
+  private: bool cmdsCleared{false};
 };
 }  // namespace ttsim
 #endif

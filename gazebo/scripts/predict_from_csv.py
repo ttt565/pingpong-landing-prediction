@@ -52,6 +52,9 @@ def main():
     # resample dense Gazebo log onto camera frames
     t0, t1 = tr["t"][0], tr["t"][-1]
     fr_t = np.arange(0.0, t1 - t0, 1.0 / a.fps)
+    if len(fr_t) < 8:
+        sys.exit(f"trajectory too short to fit: {len(fr_t)} frames at {a.fps} fps "
+                 f"over {t1 - t0:.4f}s — check traj.csv timestamps")
     P = np.stack([np.interp(fr_t + t0, tr["t"], tr[c]) for c in "xyz"], axis=1)
     sp = np.gradient(P, fr_t, axis=0)
     speeds = np.linalg.norm(sp, axis=1)

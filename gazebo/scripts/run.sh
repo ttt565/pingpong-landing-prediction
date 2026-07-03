@@ -3,6 +3,7 @@
 # Linux host with Gazebo Harmonic (gz-sim8) required. See gazebo/README.md.
 set -e
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$HERE/scripts"   # traj.csv / landing.csv land here (gitignored) regardless of caller cwd
 
 # 1) build the aero plugin (first run only)
 if [ ! -f "$HERE/plugins/aero_launch/build/libAeroLaunch.so" ]; then

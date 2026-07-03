@@ -101,6 +101,8 @@ gazebo/                Gazebo Harmonic co-simulation package (see gazebo/README.
 
 Same drag+Magnus model inside Gazebo's contact solver via a custom `gz::sim` aero
 plugin, so the prediction/evaluation code runs unchanged on Gazebo trajectories.
-**Targets Gazebo Harmonic on Linux; authored on macOS without a Gazebo runtime, so it
-is ready-to-run but not yet executed** — the committed numbers come from the validated
-analytical engine. See [gazebo/README.md](gazebo/README.md).
+**Executed and validated on WSL2 (Ubuntu 24.04 + Gazebo Harmonic 8.14)**: one full
+serve→record→predict cycle runs end-to-end, and the Gazebo landing agrees with the
+analytical RK4 landing to 8.8 mm / 1.7 ms (integrator difference). The committed
+numbers in `results/` still come from the analytical engine. See
+[gazebo/README.md](gazebo/README.md).

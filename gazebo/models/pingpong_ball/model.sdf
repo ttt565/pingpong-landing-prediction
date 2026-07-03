@@ -24,6 +24,16 @@
       </visual>
     </link>
 
+    <!-- publish the MODEL pose (parent = world, so this is the ball's world pose,
+         = ball center) on /model/pingpong_ball/pose at the physics rate.
+         Link poses are relative to the model (identity here), hence model pose. -->
+    <plugin filename="gz-sim-pose-publisher-system" name="gz::sim::systems::PosePublisher">
+      <publish_model_pose>true</publish_model_pose>
+      <publish_link_pose>false</publish_link_pose>
+      <use_pose_vector_msg>true</use_pose_vector_msg>
+      <update_frequency>1000</update_frequency>
+    </plugin>
+
     <!-- aero + launch; edit init_linear / init_angular per working condition.
          topspin = +y; constants match ttsim/physics.py -->
     <plugin filename="AeroLaunch" name="ttsim::AeroLaunch">
