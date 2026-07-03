@@ -101,8 +101,20 @@ gazebo/                Gazebo Harmonic co-simulation package (see gazebo/README.
 
 Same drag+Magnus model inside Gazebo's contact solver via a custom `gz::sim` aero
 plugin, so the prediction/evaluation code runs unchanged on Gazebo trajectories.
-**Executed and validated on WSL2 (Ubuntu 24.04 + Gazebo Harmonic 8.14)**: one full
-serve→record→predict cycle runs end-to-end, and the Gazebo landing agrees with the
-analytical RK4 landing to 8.8 mm / 1.7 ms (integrator difference). The committed
-numbers in `results/` still come from the analytical engine. See
+**Executed and validated on WSL2 (Ubuntu 24.04 + Gazebo Harmonic 8.14)**. What runs:
+
+- single serve→record→predict cycle; Gazebo landing agrees with the analytical
+  RK4 landing to 8.8 mm / 1.7 ms (integrator difference);
+- 9-condition launch sweep reproducing the method matrix on DART physics
+  ([gazebo/results_sweep.md](gazebo/results_sweep.md));
+- **M2 second-touchdown prediction** via an impulse bounce model calibrated to
+  DART's *measured* effective restitution 0.777 (not the SDF's 0.9) —
+  noise-free mismatch 1.8–7.5 cm; with noise, spin estimation dominates
+  ([gazebo/results_m2.md](gazebo/results_m2.md));
+- **Route B**: two rendered 120 fps cameras → color detection → stereo
+  triangulation (3D RMS 5.3 mm) → same estimators; rendered noise is
+  near-homoscedastic, so M3 ≈ M1 — the killer experiment's H≈0 null observed
+  on real pixels ([gazebo/results_camera.md](gazebo/results_camera.md)).
+
+The committed numbers in `results/` still come from the analytical engine. See
 [gazebo/README.md](gazebo/README.md).
