@@ -42,7 +42,11 @@ scripts/closure_check.py         RK4-vs-Gazebo landing gap across all recorded c
 scripts/camera_track.py          Route B: median-background ball detector (+exposure blend)
 scripts/camera_predict.py        Route B: stereo triangulation -> same estimators
 scripts/run_camera.sh            Route B end-to-end; "blur" arg = realism pack
+scripts/board_learn.py           contact-board dataset: N random serves -> labels
+scripts/learn_board_residual.py  ridge residual learning + sample-efficiency curve
+worlds/table_tennis_board.sdf    + sensing board just past the table end
 sweep_out/, cam_out/, cam_blur_out/  committed ground-truth recordings + summaries
+board_out/board_dataset.csv      committed per-serve dataset (raw dirs gitignored)
 ```
 
 The ball's world pose comes from a `PosePublisher` attached to the ball **model**
@@ -155,6 +159,41 @@ near-homoscedastic (H≈0). This is the killer experiment's null measured on
 pixels, and it sharpens the Phase-1 exit test: M3's regime requires
 *detector-level* confusion (real TrackNet on cluttered scenes) — measure H
 there before investing in it.
+
+## Contact-board self-supervision (`scripts/board_learn.py` → `learn_board_residual.py`)
+
+A sensing board just past the table end (`worlds/table_tennis_board.sdf`,
+face at x = 2.80 m; a real plate would be piezo/mic-array) turns **every serve
+into a free ground-truth label** — where the ball strikes it. That label
+supervises exactly what the M2 experiment showed is missing: the spin prior
+and the residual bounce mismatch.
+
+Experiment: 120 serves sampled from a 3-cluster repertoire (topspin / flat /
+backspin, with speed/direction jitter), ONE perception-noise realization per
+serve; the physics pipeline (M3_conf fit → calibrated bounce → flight)
+predicts the board contact; a multi-output ridge on 9 prediction-time
+features learns the residual. Results
+([results_board.md](results_board.md), [fig_board_learning.png](fig_board_learning.png)):
+
+| model | board-contact error (held-out serves) |
+|---|---|
+| physics only | 20.8 cm |
+| physics + ridge residual (90 labels) | **3.9 cm** |
+| true-spin oracle | 6.8 cm |
+
+Sample efficiency: **10 labels → 7.3 cm (already at the oracle), 20 → 5.1,
+80 → 3.9 cm.** Two conclusions: (1) a dozen self-labeled serves effectively
+*learn the spin prior* — the board buys the exact lever M2 needs; (2) beyond
+~40 labels the learner beats the true-spin oracle, because it also absorbs
+the analytic bounce model's systematic bias vs DART. Caveats: valid within
+the training repertoire (the physics model remains the out-of-distribution
+fallback — the learner only adds a correction on top); sim labels are
+noiseless, a real plate's ~cm label noise raises the floor accordingly.
+
+```bash
+python3 scripts/board_learn.py --n 120 --jobs 3   # ~7 min: simulate + extract
+python3 scripts/learn_board_residual.py           # instant, from the CSV
+```
 
 Sweep working conditions by editing `<init_linear>` / `<init_angular>` in
 `models/pingpong_ball/model.sdf` (topspin = +y), or script many serves and pipe

@@ -119,7 +119,13 @@ plugin, so the prediction/evaluation code runs unchanged on Gazebo trajectories.
   occlusion) → same estimators; in BOTH regimes rendered failures are
   dropouts, residual noise is near-homoscedastic, M3 ≈ M1 — the H≈0 null
   observed on pixels ([gazebo/results_camera.md](gazebo/results_camera.md),
-  [gazebo/results_camera_blur.md](gazebo/results_camera_blur.md)).
+  [gazebo/results_camera_blur.md](gazebo/results_camera_blur.md));
+- **contact-board self-supervision**: a sensing board past the table end
+  labels every serve for free; a ridge residual learner on top of the physics
+  pipeline drops the board-contact error 20.8 → 3.9 cm, reaching the
+  true-spin-oracle level with ~10–20 labeled serves and beating it beyond
+  ~40 (it also absorbs bounce-model bias) —
+  the spin prior, learned ([gazebo/results_board.md](gazebo/results_board.md)).
 
 The committed numbers in `results/` still come from the analytical engine. See
 [gazebo/README.md](gazebo/README.md).

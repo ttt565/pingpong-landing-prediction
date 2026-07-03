@@ -7,3 +7,5 @@ results/*.log
 **/build/
 gazebo/scripts/traj.csv
 gazebo/scripts/landing.csv
+gazebo/board_out/*
+!gazebo/board_out/board_dataset.csv
