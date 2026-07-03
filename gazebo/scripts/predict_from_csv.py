@@ -7,6 +7,7 @@ used on the analytical track, and report landing error per method.
 
 This is the drop-in proof that switching the physics backend RK4 -> Gazebo does
 not touch the prediction/evaluation code: identical estimators, identical metric.
+`evaluate()` is importable (used by sweep.py for the batch matrix).
 """
 import argparse
 import csv
@@ -35,6 +36,45 @@ def load(path, cols):
     return {c: np.array([float(r[c]) for r in rows]) for c in cols}
 
 
+def make_observations(tr, fps, sigma0_mm, alpha, bad_frac, seed):
+    """Resample a dense Gazebo log onto camera frames and inject the SAME
+    heteroscedastic perception noise used by the analytical track.
+    Returns (obs_t, obs_p, conf, sigma_true)."""
+    t0, t1 = tr["t"][0], tr["t"][-1]
+    fr_t = np.arange(0.0, t1 - t0, 1.0 / fps)
+    if len(fr_t) < 8:
+        raise ValueError(f"trajectory too short to fit: {len(fr_t)} frames at "
+                         f"{fps} fps over {t1 - t0:.4f}s — check traj.csv timestamps")
+    P = np.stack([np.interp(fr_t + t0, tr["t"], tr[c]) for c in "xyz"], axis=1)
+    sp = np.gradient(P, fr_t, axis=0)
+    speeds = np.linalg.norm(sp, axis=1)
+
+    rng = np.random.default_rng(seed)
+    noisy, sig, keep, conf = add_noise(P, speeds, sigma0_mm / 1000.0, alpha,
+                                       0.0, rng, bad_frac=bad_frac)
+    return fr_t[keep], noisy[keep], conf[keep], sig[keep]
+
+
+def evaluate(tr, ld, fps=120.0, sigma0_mm=8.0, alpha=1.0, bad_frac=0.2, seed=0):
+    """One noise realization on one Gazebo trajectory -> per-method landing
+    error in cm. Returns (errors_dict, n_frames)."""
+    true_xy = np.array([ld["x"][0], ld["y"][0]])
+    ot, op, cf, sg = make_observations(tr, fps, sigma0_mm, alpha, bad_frac, seed)
+
+    # all fits omega-bounded (per-component) so a few bad frames can't explode spin
+    preds = {
+        "M0": _land_xy(fit_trajectory(ot, op, fit_omega=False)),
+        "M1": _land_xy(fit_trajectory(ot, op, fit_omega=True, omega_bound=OMEGA_BOUND)),
+        "M3_conf": _land_xy(fit_trajectory(ot, op, weights=cf ** 2, fit_omega=True,
+                                           omega_bound=OMEGA_BOUND)),
+        "M3_oracle": _land_xy(fit_trajectory(ot, op, weights=1.0 / np.maximum(sg, 1e-6) ** 2,
+                                             fit_omega=True, omega_bound=OMEGA_BOUND)),
+    }
+    errs = {m: (np.nan if xy is None else 100 * float(np.linalg.norm(xy - true_xy)))
+            for m, xy in preds.items()}
+    return errs, len(ot)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("traj"); ap.add_argument("landing")
@@ -47,36 +87,13 @@ def main():
 
     tr = load(a.traj, ["t", "x", "y", "z"])
     ld = load(a.landing, ["x", "y", "t"])
-    true_xy = np.array([ld["x"][0], ld["y"][0]])
-
-    # resample dense Gazebo log onto camera frames
-    t0, t1 = tr["t"][0], tr["t"][-1]
-    fr_t = np.arange(0.0, t1 - t0, 1.0 / a.fps)
-    if len(fr_t) < 8:
-        sys.exit(f"trajectory too short to fit: {len(fr_t)} frames at {a.fps} fps "
-                 f"over {t1 - t0:.4f}s — check traj.csv timestamps")
-    P = np.stack([np.interp(fr_t + t0, tr["t"], tr[c]) for c in "xyz"], axis=1)
-    sp = np.gradient(P, fr_t, axis=0)
-    speeds = np.linalg.norm(sp, axis=1)
-
-    rng = np.random.default_rng(a.seed)
-    noisy, sig, keep, conf = add_noise(P, speeds, a.sigma0 / 1000.0, a.alpha,
-                                       0.0, rng, bad_frac=a.bad_frac)
-    ot, op, cf, sg = fr_t[keep], noisy[keep], conf[keep], sig[keep]
-
-    # all fits omega-bounded (per-component) so a few bad frames can't explode spin
-    preds = {
-        "M0": _land_xy(fit_trajectory(ot, op, fit_omega=False)),
-        "M1": _land_xy(fit_trajectory(ot, op, fit_omega=True, omega_bound=OMEGA_BOUND)),
-        "M3_conf": _land_xy(fit_trajectory(ot, op, weights=cf ** 2, fit_omega=True,
-                                           omega_bound=OMEGA_BOUND)),
-        "M3_oracle": _land_xy(fit_trajectory(ot, op, weights=1.0 / np.maximum(sg, 1e-6) ** 2,
-                                             fit_omega=True, omega_bound=OMEGA_BOUND)),
-    }
-    print(f"Gazebo truth landing: x={true_xy[0]:.3f} y={true_xy[1]:.3f} m "
-          f"({len(ot)} frames, bad_frac={a.bad_frac}, landing plane z={R_BALL} m)")
-    for m, xy in preds.items():
-        err = np.nan if xy is None else 100 * np.linalg.norm(xy - true_xy)
+    try:
+        errs, n = evaluate(tr, ld, a.fps, a.sigma0, a.alpha, a.bad_frac, a.seed)
+    except ValueError as e:
+        sys.exit(str(e))
+    print(f"Gazebo truth landing: x={ld['x'][0]:.3f} y={ld['y'][0]:.3f} m "
+          f"({n} frames, bad_frac={a.bad_frac}, landing plane z={R_BALL} m)")
+    for m, err in errs.items():
         print(f"   {m:10s} landing error = {err:6.2f} cm")
 
 
