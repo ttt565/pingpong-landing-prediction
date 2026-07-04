@@ -209,10 +209,29 @@ two deployment questions:
   with or without 2 cm label noise
   ([fig_board_online.png](fig_board_online.png)).
 
+`scripts/board_ood.py` ([results_board_ood.md](results_board_ood.md)) stress-tests
+deployment under distribution shift (leave-one-cluster-out):
+
+- **Ridge extrapolates across spin clusters better than feared**: on a
+  never-seen cluster it still cuts the error 2–3× vs physics (e.g. 26.4 →
+  11.6 cm with topspin held out) — the residual is a smooth function of the
+  fitted state, and the clusters overlap in feature space.
+- **The Mahalanobis gate works as a detector** (68 % fallback rate on the most
+  distinct held-out cluster, 6–8 % elsewhere) **but is priced as insurance**:
+  falling back to physics forfeits the extrapolation gain (21.4 vs 11.6 cm).
+  Use it where a wrong correction is costly, not to improve averages.
+- **Caveat on "learning physics through the pipeline"**: fitting (e, μ, α)
+  through flight→bounce→flight transfers OK (OOD 4.2–12.9 cm) but the
+  recovered parameters are NOT the true contact parameters — μ and α slam
+  into their bounds because the board label constrains the *whole pipeline
+  including spin-estimation bias*. Clean bounce calibration still belongs to
+  the direct pre/post-velocity measurement (`calibrate_bounce.py`).
+
 ```bash
 python3 scripts/board_learn.py --n 120 --jobs 3   # ~7 min: simulate + extract
 python3 scripts/learn_board_residual.py           # instant, from the CSV
 python3 scripts/board_robustness.py               # label-noise + online RLS
+python3 scripts/board_ood.py                      # leave-one-cluster-out
 ```
 
 Sweep working conditions by editing `<init_linear>` / `<init_angular>` in

@@ -97,9 +97,11 @@ def true_board_contact(tf, t_after):
     return None
 
 
-def predict_board_contact(theta, max_bounces=3):
+def predict_board_contact(theta, max_bounces=3, bounce_params=None):
     """Physics pipeline to the board plane: flight -> calibrated bounce ->
-    flight, up to max_bounces table contacts. Returns (y, z, t_rel) or None."""
+    flight, up to max_bounces table contacts. Returns (y, z, t_rel) or None.
+    bounce_params: optional (e, mu, alpha) override — used by the
+    differentiable bounce-parameter learning in board_ood.py."""
     p = np.array(theta[:3], float)
     v = np.array(theta[3:6], float)
     w = np.array(theta[6:9], float)
@@ -118,7 +120,11 @@ def predict_board_contact(theta, max_bounces=3):
         i = int(np.clip(np.searchsorted(ts, lt), 1, len(ts) - 1))
         f = (lt - ts[i - 1]) / (ts[i] - ts[i - 1])
         v_land = V[i - 1] + f * (V[i] - V[i - 1])
-        v, w = bounce_state(v_land, w)
+        if bounce_params is None:
+            v, w = bounce_state(v_land, w)
+        else:
+            v, w = bounce_state(v_land, w, e=bounce_params[0],
+                                mu=bounce_params[1], alpha=bounce_params[2])
         p = lp.copy()
         p[2] = R_BALL
         t_acc += lt
@@ -158,13 +164,15 @@ def extract_row(args):
         row += [round(pred_o[0], 4), round(pred_o[1], 4)]
     else:
         row += ["", ""]
-    return row
+    row += list(np.round(th[:3], 4))    # fitted p0: needed to re-run the
+    return row                          # pipeline under other bounce params
 
 
 HEADER = ["serve", "cluster", "vx0", "vy0", "vz0", "wx0", "wy0", "wz0",
           "vhx", "vhy", "vhz", "whx", "why", "whz",
           "pred_y", "pred_z", "pred_t", "true_y", "true_z", "true_t",
-          "n_frames", "pred_oracle_y", "pred_oracle_z"]
+          "n_frames", "pred_oracle_y", "pred_oracle_z",
+          "phx", "phy", "phz"]
 
 
 def main():
