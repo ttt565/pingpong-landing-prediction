@@ -1,0 +1,31 @@
+Fisher/CRLB observability at the nominal serve (sigma0=8mm alpha=1 fps=120, 36 frames to landing)
+==========================================================================
+
+(1) landing CRLB (cm) vs frames, priors on omega:
+       k   no prior     sp=400     sp=100
+       8     185.15      27.65      14.07
+      12      58.17      21.34       8.42
+      16      24.60      15.38       6.06
+      20      12.10       9.89       4.60
+      26       4.85       4.61       2.96
+      34       1.89       1.65       1.43
+
+(2) spin conditional std (rad/s, no prior; Schur complement — inf = information-free) + angle(LEAST-informed dir, v0):
+    k=  8  std=(  2991.8,   2992.3, 249985.6)  least-informed dir angle to v0 =   3.8 deg
+    k= 12  std=(  1069.6,   1070.1,  56478.2)  least-informed dir angle to v0 =   6.0 deg
+    k= 16  std=(   521.1,    521.5,  20140.6)  least-informed dir angle to v0 =   8.2 deg
+    k= 20  std=(   299.4,    299.8,   9136.4)  least-informed dir angle to v0 =  10.4 deg
+    k= 26  std=(   156.5,    156.8,   3632.7)  least-informed dir angle to v0 =  13.8 deg
+    k= 34  std=(    80.8,     81.1,   1427.9)  least-informed dir angle to v0 =  18.3 deg
+    -> the information-free spin direction is omega parallel to v: Magnus K*(omega x v) is exactly blind to it; only gravity's bending of v over the arc makes it faintly visible by the last frames.
+
+(3) empirical RMS landing error (n=60/k, same noise, fixed nominal launch):
+       k     CRLB  M1 (bounded)  ratio  spin-known  CRLB sp=100
+       8   185.15        182.40   0.99       12.02        14.07
+      12    58.17         96.37   1.66        5.50         8.42
+      16    24.60         30.22   1.23        4.23         6.06
+      20    12.10         14.97   1.24        2.39         4.60
+      26     4.85          5.15   1.06        1.75         2.96
+      34     1.89          1.74   0.92        0.96         1.43
+
+    reading: bounded-M1 tracks the no-prior CRLB within a small factor -> early error is an INFORMATION floor, not an optimizer artifact; the spin-known fit tracks the strong-prior CRLB -> a spin prior (e.g. learned from the contact board) is what moves the floor.

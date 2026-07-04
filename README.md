@@ -104,9 +104,16 @@ Predicts the landing from only the first *k* frames (all fits ω-bounded). Compa
 (`results/fig4_convergence.png`): at 8 frames the spin-inferring error is **~43 cm** while
 spin-known is **~7 cm** — early first-landing error is dominated by the **estimation
 degrees-of-freedom tied to unknown spin, not by perception noise**, and precision weighting
-cannot fix that. (This is *not* yet a rigorous "spin unobservable" claim — that needs a
-Jacobian/Fisher analysis; see [LIMITATIONS.md](LIMITATIONS.md).) The lever for early
-prediction is more arc / a spin prior; precision weighting is for the bad-frame regime instead.
+cannot fix that.
+
+This is now backed by a Fisher/CRLB analysis (`run_observability.py`,
+`results/fig6_observability.png`): the empirical bounded fit tracks the no-prior
+CRLB within ×0.9–1.7 (information floor, not optimizer artifact), **spin
+observability is rank-2** — the `ω∥v` component is information-free under
+Magnus physics (conditional std ~1 400 rad/s even at full arc) — and a
+100 rad/s spin prior moves the 8-frame CRLB from 185 cm to 14 cm. The lever
+for early prediction is more arc / a spin prior (learnable from the contact
+board); precision weighting is for the bad-frame regime instead.
 
 ## Repository layout
 

@@ -65,14 +65,27 @@ the confidence signal itself is worth ≈0.0–0.2 cm at the operating point, up
 ~0.6.* The Phase-1 exit test must therefore measure both H and the
 confidence-vs-precision calibration of the real detector.
 
-## Spin "observability" (point 4, restrained wording)
+## Spin observability — now Fisher-grade (v2 item 1, done)
 
-`bounded M1 ≈ 41 cm` vs `spin-known ≈ 7 cm` at 8 frames shows **the estimation
-degrees-of-freedom tied to unknown spin are an important bottleneck** for early
-prediction — but this is **not yet** a rigorous "spin is unobservable" claim. The gap
-also mixes optimizer local minima, an over-parameterized 3-component `ω`, no spin
-prior, and parameter coupling. Establishing unobservability requires a Jacobian
-singular-value / profile-likelihood / Fisher-information analysis (v2).
+`run_observability.py` (results/observability.txt, fig6) upgrades the earlier
+empirical observation to an information-theoretic statement at the nominal serve:
+
+- **The empirical bounded-M1 error tracks the no-prior CRLB within ×0.9–1.7**
+  (185 cm CRLB vs 182 cm measured at k=8; 1.9 vs 1.7 at full arc): early
+  prediction error is an **information floor**, not an optimizer artifact.
+- **Spin observability is rank-2.** The Schur-complement information for ω has
+  an information-free direction lying 4°–18° from v̂ throughout the arc —
+  Magnus `K·(ω×v)` is exactly blind to `ω∥v`, and only gravity's bending of v
+  makes it faintly visible late. Its conditional std is 250 000 rad/s at k=8
+  and still **1 400 rad/s at full arc** (true spin ≈ 400). The two ⊥
+  components go 2 990 → 81 rad/s.
+- **A spin prior moves the floor**: posterior CRLB with a 100 rad/s prior is
+  14 cm at k=8 (vs 185 without), matching the empirical spin-known fit — and
+  the contact-board experiment shows such a prior is learnable from ~10–20
+  self-labeled serves.
+
+Caveat: local analysis at one nominal trajectory; the constants shift with the
+serve, the geometry (rank-2 structure) does not.
 
 ## The "3 cm" threshold, reframed (point 6)
 
@@ -101,8 +114,9 @@ truth first:
 
 ## v2 roadmap (priority order)
 
-1. **Physical constraints** — norm/axis spin prior (not just box bounds), regularization,
-   Jacobian-conditioning / Fisher analysis for observability.
+1. **Physical constraints** — ~~Jacobian-conditioning / Fisher analysis for
+   observability~~ (**done**, see above); a norm/axis spin prior in the production
+   estimators (beyond box bounds) is still open.
 2. ~~**Robust baselines**~~ — **done** (Huber + MAD gating; see above). Robust/adaptive
    Kalman and confidence-threshold rejection remain if anyone wants more nails.
 3. **Artificial model-mismatch matrix** — richer analytical truth (above) vs simplified
