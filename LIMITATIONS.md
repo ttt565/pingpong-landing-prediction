@@ -12,11 +12,11 @@ Two independent reviews (summarized below) drove these caveats.
 |---|---|---|---|
 | 1 | **M1 is weighted physics fitting, not residual correction.** M0/M1/M3 all fit `p0,v0,ω` by weighted NLS; only the weights differ. | This tests "weighting vs no weighting," not the proposal's "physics + learned residual." | open (v2) |
 | 2 | **Inverse crime.** Truth and predictor use the *same* drag/Magnus equations + parameters, so `M4 = 0 cm`. | Only estimation error is measured; **zero model error** ⇒ says nothing about sim-to-real. | open (v2, top priority) |
-| 3 | **`M3_conf` calibration is baked in:** `confidence = 1/σ · lognormal`. | "90% of oracle" only shows *if* the TrackNet score ≈ true inverse-σ, weighting helps. Circular. | open (v2) |
+| 3 | **`M3_conf` calibration is baked in:** `confidence = 1/σ · lognormal`. | "90% of oracle" only shows *if* the TrackNet score ≈ true inverse-σ, weighting helps. Circular. | **quantified** — `run_miscalibration.py`: M3 beats Huber only for conf log-noise ≲ 0.6 (γ≥0.5); worse confidence is actively harmful (fig5) |
 | 4 | **Early-prediction error was optimizer blow-up, not clean unobservability.** | The `72 cm` figure came from unbounded `ω` exploding (see below). | corrected here |
 | 5 | **`H` is not a standalone go/no-go metric.** Same `H≈1.15` gave 2.0 vs 3.5 cm gains; past 35% bad frames `H` falls while gain rises. Also: real per-frame `σ` is unknown without position-labeled data. | The decision depends on bad-frame rate, location, temporal correlation, and confidence calibration jointly. | reframed (v2) |
 | 6 | **The "3 cm floor" is not a hard wall.** | A mean difference below single-measurement noise is still detectable with enough paired samples. | reframed (below) |
-| 7 | **No robust baselines.** Bad frames are i.i.d. zero-mean high-variance Gaussian; M1 is plain OLS. | M3 may only beat *deliberately naive* OLS. The real competitors are Huber/Cauchy, RANSAC/residual-gating, robust/adaptive Kalman, confidence-threshold rejection. | open (v2, top priority) |
+| 7 | **No robust baselines.** Bad frames are i.i.d. zero-mean high-variance Gaussian; M1 is plain OLS. | M3 may only beat *deliberately naive* OLS. The real competitors are Huber/Cauchy, RANSAC/residual-gating, robust/adaptive Kalman, confidence-threshold rejection. | **done — and the concern was right** (see "Robust-baseline result" below): tuned Huber/MAD-gating capture nearly all of M3's gain; confidence-attributable remainder ≈ +0.16 cm [0.02, 0.31] at the op. point. Robust/adaptive Kalman variants remain untested |
 | 8 | **Gazebo coordinate bug (fixed):** recorder used contact at `z = R_ball`, predictor landed at `z = 0`. | ~2 cm systematic bias. | fixed (predictor now lands at `z = R_ball` in the bridge) |
 
 ## Corrected finding (point 4) — bounded, with CI
@@ -38,6 +38,32 @@ persists (+2.17 cm [1.82, 2.52]).* It shows the advantage is **not purely a para
 explosion artifact** — it does **not** show the mechanism holds for real TrackNet, because
 the +2.17 cm still rests on (a) an artificial bad-frame model, (b) `confidence ≈ 1/σ`,
 (c) predictor ≡ truth (inverse crime), and (d) no comparison against robust baselines.
+
+## Robust-baseline result (v2 item 2 — done, reframes the headline)
+
+Operating point, 160 trials, same seeds as the committed results (old numbers
+reproduce bit-exactly; new methods are pure additions):
+
+```
+M1 3.62   M_huber 1.84   M_gate 1.71   M3_conf 1.68   M3_oracle 1.45  (cm)
+gap M1-M3conf     = +1.94 [1.59, 2.31]   (the OLD framing: weighting vs plain OLS)
+gap Mhuber-M3conf = +0.16 [0.02, 0.31]   (the HONEST framing: value of confidence)
+gap Mgate-M3conf  = +0.03 [-0.16, 0.27]  (statistically zero)
+```
+
+Across the bad-frac sweep the confidence-attributable gain peaks at +1.31 cm
+(bad_frac=0.50) — still below the ~3 cm floor. Gazebo cross-check: over the
+9-condition DART sweep, `M_huber − M3_conf` CIs include zero in 8/9 conditions.
+The tuned constants (Huber f_scale=0.015, gate k=2.5·MAD) were selected on
+independent trials, i.e. the baselines compete at their best.
+
+**Correct wording now:** *precision weighting's advantage over uniform OLS is
+real, but almost all of it is generic robustness-to-outliers, obtainable with a
+robust loss and NO confidence signal. Under the current synthetic assumptions
+the confidence signal itself is worth ≈0.0–0.2 cm at the operating point, up to
+~1.3 cm at extreme bad-frame rates, and is HARMFUL if its log-noise exceeds
+~0.6.* The Phase-1 exit test must therefore measure both H and the
+confidence-vs-precision calibration of the real detector.
 
 ## Spin "observability" (point 4, restrained wording)
 
@@ -77,11 +103,12 @@ truth first:
 
 1. **Physical constraints** — norm/axis spin prior (not just box bounds), regularization,
    Jacobian-conditioning / Fisher analysis for observability.
-2. **Robust baselines** — Huber/Cauchy, RANSAC/residual-gating, robust/adaptive Kalman,
-   confidence-threshold rejection. M3 must beat these to matter.
+2. ~~**Robust baselines**~~ — **done** (Huber + MAD gating; see above). Robust/adaptive
+   Kalman and confidence-threshold rejection remain if anyone wants more nails.
 3. **Artificial model-mismatch matrix** — richer analytical truth (above) vs simplified
    predictor; break the inverse crime; re-introduce a real residual-correction M1.
-4. **Confidence-miscalibration sweep** — degrade `confidence` away from `1/σ` and measure
-   sensitivity; flag that real calibration needs position-labeled arcs.
+4. ~~**Confidence-miscalibration sweep**~~ — **done** (`run_miscalibration.py`, fig5):
+   usable confidence needs log-noise ≲ 0.6 and γ ≳ 0.5; real calibration still needs
+   position-labeled arcs.
 5. **Gazebo / TrackNet route** — only after 1–4; add `Cd(Re)`/spin-decay to the plugin and
    the rendered-camera path so Gazebo contributes real mismatch + perception error.

@@ -61,6 +61,10 @@ def run_trial(p0, v0, omega, sigma0, alpha, p_miss, fps, rng, methods,
                 xy = E.predict_M0(obs_t, obs_p)
             elif name == "M1":
                 xy = E.predict_M1(obs_t, obs_p)
+            elif name == "M_huber":
+                xy = E.predict_M_huber(obs_t, obs_p)
+            elif name == "M_gate":
+                xy = E.predict_M_gate(obs_t, obs_p)
             elif name == "M3_oracle":
                 xy = E.predict_M3_oracle(obs_t, obs_p, sigma_true=sig)
             elif name == "M3_conf":

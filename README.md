@@ -2,9 +2,17 @@
 
 > ⚠️ **Read [LIMITATIONS.md](LIMITATIONS.md) before citing any number.** This is a
 > mechanism sandbox under synthetic assumptions (inverse crime, baked-in confidence
-> calibration, no robust baselines). The headline figures are **not** real-system claims.
-> The fair, bounded operating-point M3 advantage is **+2.17 cm [95% CI 1.82, 2.52]**, not
-> the unbounded +2.8 cm — and still rests on the assumptions listed there.
+> calibration). The headline figures are **not** real-system claims.
+>
+> **Robust-baseline update (v2):** against the honest reference — a tuned,
+> confidence-FREE Huber loss or residual gating — the marginal value of the
+> confidence signal at the operating point is **+0.16 cm [0.02, 0.31]**
+> (gating: +0.03 [−0.16, +0.27]), an order of magnitude below the ~3 cm floor.
+> The old M1-relative gap (+2.17 cm [1.83, 2.52] vs oracle, reproduced
+> bit-exactly) measured "weighting vs plain OLS", most of which a robust loss
+> collects for free. **Deployment guidance: use Huber/gating; wire in
+> confidence only if it is unusually well calibrated (log-noise ≲ 0.6) and
+> bad frames are extreme** — see `results/miscalibration.txt` + fig5.
 
 Goal of this phase: **before building any hardware**, decide whether precision-weighted
 residual correction (M3) can beat the plain residual/physics fit (M1) by *more than the
@@ -34,13 +42,18 @@ All methods fit `θ=(p0,v0,ω)` to the noisy observed arc by **weighted nonlinea
 squares** against the physics model, then integrate to the landing point
 (`ttsim/estimators.py`). M1 vs M3 differ **only** in the per-frame weights — a clean ablation.
 
-| method      | weights                    | role |
-|-------------|----------------------------|------|
-| `M0`        | uniform, ω fixed = 0       | lower bound (no spin) |
-| `M1`        | uniform                    | existing residual/full fit |
-| `M3_conf`   | `confidence²` (realizable) | **the deployable contribution** |
-| `M3_oracle` | `1/σ_true²`                | ceiling of *any* precision scheme |
-| `M4`        | uniform, noise-free obs    | upper bound |
+| method      | weights / loss                        | role |
+|-------------|---------------------------------------|------|
+| `M0`        | uniform, ω fixed = 0                  | lower bound (no spin) |
+| `M1`        | uniform                               | existing residual/full fit |
+| `M_huber`   | uniform, Huber loss (tuned f_scale)   | **robust baseline, no confidence** |
+| `M_gate`    | uniform, MAD residual gating + refit  | **robust baseline, no confidence** |
+| `M3_conf`   | `confidence²` (realizable)            | confidence-weighted candidate |
+| `M3_oracle` | `1/σ_true²`                           | ceiling of *any* precision scheme |
+| `M4`        | uniform, noise-free obs               | upper bound |
+
+`M3` must beat `M_huber`/`M_gate` — not `M1` — for the confidence signal to
+matter; at the operating point it does not (gap ≈ 0.0–0.2 cm).
 
 `H = std(σ)/mean(σ)` over the observed frames is the **heteroscedasticity index** — *one
 diagnostic among several* for whether precision weighting can help (H=0 ⇒ optimal weights
@@ -53,14 +66,17 @@ correlation, and how well confidence is calibrated to true σ. See [LIMITATIONS.
 ```bash
 python run_killer.py --trials 150      # full run (parallel across trials)
 python run_killer.py --quick           # 30 trials, fast smoke test
+python run_miscalibration.py           # confidence-quality threshold sweep
 ```
 
 Outputs to `results/`:
 - `summary.txt` — all numbers + a GO/NO-GO verdict
 - `fig1_methods.png` — method comparison at a realistic operating point
-- `fig2_hetero_sweep.png` — **the main figure**: M3 gain vs bad-frame frequency / H, with
-  the ~3 cm measurement floor drawn in
+- `fig2_hetero_sweep.png` — **the main figure**: M3 gain vs bad-frame frequency / H,
+  now with the Huber baseline and the residual confidence-value curve
 - `fig3_nobs_sweep.png` — M3 gain vs number of observed frames
+- `fig5_miscalibration.png` + `miscalibration.txt` — how good the confidence
+  signal must be (log-noise, mis-scaling γ) before M3 beats a robust loss
 
 ## How to read it
 
@@ -71,9 +87,15 @@ proportion to how much σ varies across the observations you actually have. So:
    pursue M3, the gain is below the measurement floor.
 2. M3 earns its keep specifically when **some frames are much worse than others and you can
    identify them** (confidence) — i.e. it is really *robustness to bad detections*.
+3. **But robustness to bad detections does not require a confidence signal.** A tuned
+   Huber loss / MAD gating recovers nearly all of the gain with no side information
+   (op. point: M_huber 1.84, M_gate 1.71, M3_conf 1.68 cm); the confidence-attributable
+   remainder stays ≤ 1.3 cm even at 50 % bad frames, and turns *negative* once
+   confidence log-noise exceeds ~0.6 (fig5) — miscalibrated confidence actively hurts.
 
-So the Phase-1 exit test becomes concrete: **measure H from the actual TrackNet detections**
-on a few recorded arcs. That number tells you whether M3 is worth the hardware.
+So the Phase-1 exit test becomes concrete: **measure H *and* the confidence-vs-precision
+calibration from actual TrackNet detections** on a few recorded arcs. Unless the
+confidence is unusually informative, the deployable answer is a robust loss, not M3.
 
 ## Experiment B — convergence + spin observability (`run_convergence.py`)
 

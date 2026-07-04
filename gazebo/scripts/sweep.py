@@ -44,7 +44,7 @@ CONDITIONS = [
     ("v70_top400",  (7.0, 0.0, 0.9), (0.0,  400.0, 0.0)),
     ("v60_mixed",   (6.0, 0.3, 0.9), (50.0, 350.0, 80.0)),  # side+top, lateral
 ]
-METHODS = ["M0", "M1", "M3_conf", "M3_oracle"]
+METHODS = ["M0", "M1", "M_huber", "M_gate", "M3_conf", "M3_oracle"]
 ITERATIONS = 2000   # 2 s sim time: covers both touchdowns for all conditions
 
 
@@ -179,12 +179,22 @@ def main():
         md.append(f"| {name} | {fmt_vec(v)} | {fmt_vec(w)} | {c1} | {t1} | {c2} | {t2} |")
 
     md.append("\n## First-landing prediction error, mean ± std cm over seeds\n")
-    md.append("The gain column is the PAIRED per-seed difference M1 − M3_conf "
-              "(same noise realization for both methods) with a 95% t-interval — "
-              "positive = precision weighting helps.\n")
-    md.append("| condition | " + " | ".join(METHODS) + " | M1−M3_conf gain [95% CI] |")
-    md.append("|---" * (len(METHODS) + 2) + "|")
+    md.append("Gain columns are PAIRED per-seed differences (same noise "
+              "realization) with 95% t-intervals. M1−M3_conf = the headline "
+              "gain over uniform weighting; M_huber−M3_conf = the marginal "
+              "value of the confidence signal over a tuned confidence-free "
+              "robust loss (the honest bar).\n")
+    md.append("| condition | " + " | ".join(METHODS) +
+              " | M1−M3_conf [CI] | M_huber−M3_conf [CI] |")
+    md.append("|---" * (len(METHODS) + 3) + "|")
     from scipy.stats import t as t_dist
+
+    def paired_gain(a, b):
+        g = np.array(a) - np.array(b)
+        g = g[~np.isnan(g)]
+        half = t_dist.ppf(0.975, len(g) - 1) * g.std(ddof=1) / np.sqrt(len(g))
+        return g, half
+
     with open(summary_csv, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["condition", "method", "mean_cm", "std_cm", "seeds"])
@@ -197,12 +207,12 @@ def main():
                 w.writerow([name, m, f"{np.nanmean(e):.3f}",
                             f"{np.nanstd(e):.3f}", len(e)])
                 cells.append(f"{np.nanmean(e):.2f} ± {np.nanstd(e):.2f}")
-            g = np.array(results[name]["M1"]) - np.array(results[name]["M3_conf"])
-            g = g[~np.isnan(g)]
-            half = t_dist.ppf(0.975, len(g) - 1) * g.std(ddof=1) / np.sqrt(len(g))
-            w.writerow([name, "M1_minus_M3conf",
-                        f"{g.mean():.3f}", f"{g.std(ddof=1):.3f}", len(g)])
-            cells.append(f"**{g.mean():.2f}** [{g.mean()-half:.2f}, {g.mean()+half:.2f}]")
+            for ref, tag in (("M1", "M1_minus_M3conf"),
+                             ("M_huber", "Mhuber_minus_M3conf")):
+                g, half = paired_gain(results[name][ref], results[name]["M3_conf"])
+                w.writerow([name, tag, f"{g.mean():.3f}",
+                            f"{g.std(ddof=1):.3f}", len(g)])
+                cells.append(f"**{g.mean():.2f}** [{g.mean()-half:.2f}, {g.mean()+half:.2f}]")
             md.append(f"| {name} | " + " | ".join(cells) + " |")
 
     md_path = os.path.join(GZ, "results_sweep.md")

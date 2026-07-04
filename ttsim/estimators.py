@@ -36,12 +36,14 @@ def _initial_guess(obs_t, obs_p, fit_omega):
 
 
 def fit_trajectory(obs_t, obs_p, weights=None, fit_omega=True, fixed_omega=None,
-                   omega_bound=None, dt_fit=4e-3):
+                   omega_bound=None, dt_fit=4e-3, loss="linear", f_scale=1.0):
     """Weighted NLS fit with an analytic (batched finite-diff) Jacobian.
 
     weights are per-frame (length N); None -> uniform. M1 vs M3 differ ONLY here.
     fixed_omega: spin value to hold when fit_omega=False (default 0 = no spin).
     omega_bound: if set, constrain |omega_i| <= omega_bound rad/s (physical prior).
+    loss/f_scale: passed to scipy least_squares — loss="huber" turns the SAME
+    estimator into the confidence-free robust baseline (M_huber).
     """
     if weights is None:
         weights = np.ones(len(obs_t))
@@ -77,7 +79,7 @@ def fit_trajectory(obs_t, obs_p, weights=None, fit_omega=True, fixed_omega=None,
     else:
         bounds = (-np.inf, np.inf)
     sol = least_squares(resid, x0, jac=jac, method="trf", x_scale=xscale,
-                        bounds=bounds, max_nfev=80)
+                        bounds=bounds, max_nfev=80, loss=loss, f_scale=f_scale)
     return theta_of(sol.x)
 
 
@@ -98,6 +100,39 @@ def predict_M1_spinknown(obs_t, obs_p, true_omega, **kw):
     """Fit only (p0,v0) with the TRUE spin given. Isolates the spin-estimation
     penalty: gap to M1 = cost of having to infer omega from the arc."""
     return _landing_xy(fit_trajectory(obs_t, obs_p, fit_omega=False, fixed_omega=true_omega))
+
+
+def predict_M_huber(obs_t, obs_p, f_scale=0.015, **kw):
+    """ROBUST BASELINE: same estimator, Huber loss, NO confidence signal.
+    Whatever M3_conf gains beyond this is the true marginal value of the
+    confidence input; anything up to this is available for free. f_scale is
+    the residual scale (m) where the loss turns linear — tuned on held-out
+    trials at the operating point (0.015 best of {0.015..0.08}, ~1.5x
+    good-frame sigma), i.e. the baseline competes at its best."""
+    return _landing_xy(fit_trajectory(obs_t, obs_p, fit_omega=True,
+                                      omega_bound=OMEGA_BOUND,
+                                      loss="huber", f_scale=f_scale))
+
+
+def fit_trajectory_gated(obs_t, obs_p, k_mad=2.5, min_keep=8):
+    """Two-pass residual gating, NO confidence signal: uniform fit -> drop
+    frames whose 3D residual exceeds median + k*MAD -> refit. Returns theta,
+    so each track can project to its own landing plane."""
+    th1 = fit_trajectory(obs_t, obs_p, fit_omega=True, omega_bound=OMEGA_BOUND)
+    r = np.linalg.norm(predict_positions(th1, obs_t) - obs_p, axis=1)
+    med = np.median(r)
+    mad = 1.4826 * np.median(np.abs(r - med)) + 1e-12
+    keep = r <= med + k_mad * mad
+    if keep.sum() < min_keep:
+        return th1
+    return fit_trajectory(obs_t[keep], obs_p[keep], fit_omega=True,
+                          omega_bound=OMEGA_BOUND)
+
+
+def predict_M_gate(obs_t, obs_p, k_mad=2.5, min_keep=8, **kw):
+    """ROBUST BASELINE: the classic 'reject outliers, refit' recipe
+    (k tuned like M_huber)."""
+    return _landing_xy(fit_trajectory_gated(obs_t, obs_p, k_mad, min_keep))
 
 
 def predict_M3_oracle(obs_t, obs_p, sigma_true, **kw):

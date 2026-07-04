@@ -101,7 +101,11 @@ recordings + `manifest.csv` (single source of truth for launch params) under
 `sweep_out/`. The analytical track's mechanism carries over unchanged: M0
 degrades with spin (1.9→6.7 cm), M3_conf ≈ M3_oracle, and the **paired**
 per-seed gain M1−M3_conf is positive with a 95% CI excluding zero in *all
-nine conditions* (point estimates 1.1–2.5 cm).
+nine conditions* (point estimates 1.1–2.5 cm). The robust-baseline columns
+tell the same story as the analytical track (see ../LIMITATIONS.md): the
+confidence-attributable remainder **M_huber−M3_conf is 0.1–0.5 cm with CIs
+including zero in 8/9 conditions** — robust fitting without any confidence
+signal already collects nearly all of the gain on DART physics too.
 
 ```bash
 python3 scripts/sweep.py             # ~4 min: 9 sims + 1080 fits
