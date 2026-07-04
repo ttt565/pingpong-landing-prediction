@@ -11,7 +11,7 @@ Two independent reviews (summarized below) drove these caveats.
 | # | Limitation | Why it matters | Status |
 |---|---|---|---|
 | 1 | **M1 is weighted physics fitting, not residual correction.** M0/M1/M3 all fit `p0,v0,ω` by weighted NLS; only the weights differ. | This tests "weighting vs no weighting," not the proposal's "physics + learned residual." | open (v2) |
-| 2 | **Inverse crime.** Truth and predictor use the *same* drag/Magnus equations + parameters, so `M4 = 0 cm`. | Only estimation error is measured; **zero model error** ⇒ says nothing about sim-to-real. | open (v2, top priority) |
+| 2 | **Inverse crime.** Truth and predictor use the *same* drag/Magnus equations + parameters, so `M4 = 0 cm`. | Only estimation error is measured; **zero model error** ⇒ says nothing about sim-to-real. | **done** — `run_mismatch.py` (fig7): rich truth (Cd(v), Magnus saturation, spin decay). Full-arc first-landing is nearly immune (M4 ≤ 0.02 cm — the fit re-absorbs the mismatch into biased θ̂, saturation being exactly an ω-rescale); the bias re-emerges in extrapolation (half-arc M4 up to 0.30 cm) and wherever θ̂ is reused (M2 bounce pipeline). Conclusions survive |
 | 3 | **`M3_conf` calibration is baked in:** `confidence = 1/σ · lognormal`. | "90% of oracle" only shows *if* the TrackNet score ≈ true inverse-σ, weighting helps. Circular. | **quantified** — `run_miscalibration.py`: M3 beats Huber only for conf log-noise ≲ 0.6 (γ≥0.5); worse confidence is actively harmful (fig5) |
 | 4 | **Early-prediction error was optimizer blow-up, not clean unobservability.** | The `72 cm` figure came from unbounded `ω` exploding (see below). | corrected here |
 | 5 | **`H` is not a standalone go/no-go metric.** Same `H≈1.15` gave 2.0 vs 3.5 cm gains; past 35% bad frames `H` falls while gain rises. Also: real per-frame `σ` is unknown without position-labeled data. | The decision depends on bad-frame rate, location, temporal correlation, and confidence calibration jointly. | reframed (v2) |
@@ -64,6 +64,20 @@ the confidence signal itself is worth ≈0.0–0.2 cm at the operating point, up
 ~1.3 cm at extreme bad-frame rates, and is HARMFUL if its log-noise exceeds
 ~0.6.* The Phase-1 exit test must therefore measure both H and the
 confidence-vs-precision calibration of the real detector.
+
+**Rider (from the mismatch/early-prediction matrix, fig7):** in the HALF-arc
+(early-prediction) regime the Huber→M3_conf gap opens to +9…+14 cm mean even
+with zero model mismatch — with few frames and 20 % bad frames, confidence
+weighting mainly suppresses catastrophic fits (means are tail-driven; medians
+differ ~2–3 cm). Confidence earns its keep for *early* prediction; for
+full-arc prediction a robust loss suffices.
+
+**Measured on real video** (`real/exit_test.py`, OpenTTGames 120 fps,
+lightweight detector as TrackNet stand-in): γ̂ = 1.06, confidence log-noise
+0.17 — both PASS the fig5 thresholds — σ 3.6→1.2 px across confidence
+deciles, within-arc H = 0.31, 9.4 % dropouts. The confidence quality is
+there; the measured heterogeneity is well below the synthetic operating
+point, so expected full-arc gains stay small.
 
 ## Spin observability — now Fisher-grade (v2 item 1, done)
 
@@ -119,10 +133,13 @@ truth first:
    estimators (beyond box bounds) is still open.
 2. ~~**Robust baselines**~~ — **done** (Huber + MAD gating; see above). Robust/adaptive
    Kalman and confidence-threshold rejection remain if anyone wants more nails.
-3. **Artificial model-mismatch matrix** — richer analytical truth (above) vs simplified
-   predictor; break the inverse crime; re-introduce a real residual-correction M1.
+3. ~~**Artificial model-mismatch matrix**~~ — **done** (`run_mismatch.py`, fig7;
+   `ttsim/physics_rich.py`). Re-introducing a real residual-correction M1 is still open
+   (the contact-board ridge is the closest existing piece).
 4. ~~**Confidence-miscalibration sweep**~~ — **done** (`run_miscalibration.py`, fig5):
    usable confidence needs log-noise ≲ 0.6 and γ ≳ 0.5; real calibration still needs
    position-labeled arcs.
-5. **Gazebo / TrackNet route** — only after 1–4; add `Cd(Re)`/spin-decay to the plugin and
-   the rendered-camera path so Gazebo contributes real mismatch + perception error.
+5. **Gazebo / TrackNet route** — **partially done**: the real-video exit test
+   (`real/exit_test.py`, OpenTTGames) measures H + confidence calibration for a
+   lightweight stand-in detector and accepts any detector's CSV (plug TrackNet there);
+   rich-physics knobs in the Gazebo plugin remain open.

@@ -92,6 +92,10 @@ proportion to how much σ varies across the observations you actually have. So:
    (op. point: M_huber 1.84, M_gate 1.71, M3_conf 1.68 cm); the confidence-attributable
    remainder stays ≤ 1.3 cm even at 50 % bad frames, and turns *negative* once
    confidence log-noise exceeds ~0.6 (fig5) — miscalibrated confidence actively hurts.
+   **Rider (fig7):** in the *early-prediction* regime (half the arc observed) the
+   Huber→M3 gap opens to +9…+14 cm mean even with zero model mismatch — with few
+   frames, confidence weighting mainly suppresses catastrophic fits. Confidence
+   earns its keep early in the arc; for full-arc prediction use a robust loss.
 
 So the Phase-1 exit test becomes concrete: **measure H *and* the confidence-vs-precision
 calibration from actual TrackNet detections** on a few recorded arcs. Unless the
@@ -118,13 +122,29 @@ board); precision weighting is for the bad-frame regime instead.
 ## Repository layout
 
 ```
-ttsim/                 analytical engine: physics, noise, estimators, experiment
+ttsim/                 analytical engine: physics(+rich truth), noise, bounce, estimators
 run_killer.py          M3 go/no-go: operating point + H sweep + frame-rate sweep
+run_miscalibration.py  confidence-quality thresholds vs the robust baseline (fig5)
+run_observability.py   Fisher/CRLB: rank-2 spin observability, prior value (fig6)
+run_mismatch.py        inverse crime broken: rich truth vs simple predictor (fig7)
 run_convergence.py     experiment B: convergence + spin observability
 sanity.py              physics realism + timing self-check
 results/               figures + summaries (committed)
 gazebo/                Gazebo Harmonic co-simulation package (see gazebo/README.md)
+real/                  exit test on real 120fps footage (see real/README.md)
 ```
+
+## Real-video exit test (`real/`)
+
+The go/no-go numbers, measured on OpenTTGames (120 fps, per-frame ball
+labels) with a lightweight background-subtraction detector (TrackNet
+stand-in; the harness scores any detector's CSV): calibration **γ̂ = 1.06**
+and confidence log-noise **0.17** — both PASS the fig5 thresholds — with σ
+spanning 3.6→1.2 px across confidence deciles, within-arc **H = 0.31**, 9.4 %
+dropouts. Reading: the confidence signal is good enough to use, but the
+measured heterogeneity is well below the synthetic operating point (H≈1.15),
+so the expected M3-vs-robust-loss gain is small; the robust loss stays the
+default. See [real/results_exit_test.md](real/results_exit_test.md).
 
 ## Gazebo co-simulation track (`gazebo/`)
 

@@ -1,0 +1,83 @@
+Inverse-crime break: rich truth vs simplified predictor (n=160/cell, operating point bad_frac=0.2)
+==========================================================================
+levels: none = truth==predictor model (sanity), mild/strong = Cd(v) + Magnus saturation + spin decay (physics_rich.py)
+obs=1.0: fit sees the whole arc (interpolation; the fit ABSORBS the mismatch into biased theta-hat). obs=0.5: fit sees the first half and must extrapolate through the mismatched physics.
+
+  [none, obs=1.0]  (n=160)
+    method        mean  median  (cm)
+    M0            6.45    6.35
+    M1            3.33    2.64
+    M_huber       1.86    1.50
+    M_gate        1.91    1.45
+    M3_conf       1.70    1.63
+    M3_oracle     1.49    1.33
+    M4            0.00    0.00
+    gap M1-M3conf     = +1.62 [+1.27,+2.01]
+    gap Mhuber-M3conf = +0.15 [-0.02,+0.34]
+
+  [none, obs=0.5]  (n=160)
+    method        mean  median  (cm)
+    M0           20.92   20.07
+    M1           86.97   30.42
+    M_huber      40.59   21.70
+    M_gate       41.35   20.20
+    M3_conf      29.91   18.58
+    M3_oracle    25.02   17.44
+    M4            0.01    0.01
+    gap M1-M3conf     = +57.06 [+38.40,+76.71]
+    gap Mhuber-M3conf = +10.68 [+1.05,+20.15]
+
+  [mild, obs=1.0]  (n=160)
+    method        mean  median  (cm)
+    M0            5.86    5.54
+    M1            3.23    2.53
+    M_huber       1.89    1.56
+    M_gate        1.79    1.51
+    M3_conf       1.71    1.52
+    M3_oracle     1.48    1.37
+    M4            0.01    0.01
+    gap M1-M3conf     = +1.53 [+1.13,+1.95]
+    gap Mhuber-M3conf = +0.19 [-0.01,+0.40]
+
+  [mild, obs=0.5]  (n=160)
+    method        mean  median  (cm)
+    M0           19.44   18.41
+    M1           93.20   29.73
+    M_huber      37.76   22.49
+    M_gate       39.67   20.73
+    M3_conf      28.75   19.77
+    M3_oracle    23.53   18.01
+    M4            0.06    0.06
+    gap M1-M3conf     = +64.45 [+45.10,+85.64]
+    gap Mhuber-M3conf = +9.02 [+3.47,+15.19]
+
+  [strong, obs=1.0]  (n=160)
+    method        mean  median  (cm)
+    M0            5.29    4.91
+    M1            3.35    2.69
+    M_huber       1.95    1.66
+    M_gate        1.84    1.42
+    M3_conf       1.50    1.36
+    M3_oracle     1.45    1.33
+    M4            0.02    0.02
+    gap M1-M3conf     = +1.86 [+1.48,+2.26]
+    gap Mhuber-M3conf = +0.46 [+0.28,+0.64]
+
+  [strong, obs=0.5]  (n=160)
+    method        mean  median  (cm)
+    M0           17.64   16.23
+    M1           88.06   35.85
+    M_huber      43.72   24.37
+    M_gate       41.76   22.23
+    M3_conf      30.21   21.62
+    M3_oracle    26.00   19.57
+    M4            0.30    0.30
+    gap M1-M3conf     = +57.85 [+41.38,+77.01]
+    gap Mhuber-M3conf = +13.51 [+4.86,+23.13]
+
+READING
+  - M4 (pure model error) full arc: none 0.00, mild 0.01, strong 0.02 cm -> the flight fit re-absorbs Cd(v)/saturation/decay into biased theta-hat almost perfectly (saturation is exactly an omega-rescale). First-landing prediction from a full arc is insensitive to this mismatch class;
+    the bias re-emerges wherever theta-hat is USED further: early prediction (below), and the M2 bounce pipeline.
+  - M4 half arc: none 0.01, mild 0.06, strong 0.30 cm -> extrapolation through mismatched physics is where model error bites.
+  - robust-baseline verdict, FULL arc: gap Mhuber-M3conf <= +0.46 cm at every mismatch level -> 'use a robust loss' is not an inverse-crime artifact.
+  - HALF arc (early prediction): the gap opens to none +10.68, mild +9.02, strong +13.51 cm mean — including with NO mismatch, i.e. this is the few-frames REGIME, not model error: with ~17 frames and 20% bad frames, confidence weighting mainly suppresses catastrophic fits (means are tail-driven; medians sit ~2-3 cm apart). The batch-1 verdict gains a rider: confidence earns its keep in the early-prediction regime.
