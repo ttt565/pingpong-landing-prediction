@@ -10,9 +10,12 @@ Pipeline per noise seed:
      touchdown; compare with Gazebo's recorded bounces.csv row 2.
 
 Reference rows:
-  * "M2_spinknown": same noisy fit but the TRUE launch spin (from the sweep
-    manifest.csv) is handed in — quantifies how much of the M2 error is
-    spin-estimation error amplified through the bounce.
+  * "M2_prior": noisy fit with a Gaussian MAP spin prior centred on the
+    manifest spin, sigma=60 rad/s — a session prior of the kind a robot
+    accumulates from warm-up fits or contact-board self-supervision. The
+    DEPLOYABLE row.
+  * "M2_spinknown": same noisy fit but the TRUE launch spin handed in —
+    quantifies the full spin-estimation penalty (upper reference).
   * "M2_clean": noise-free fit — isolates the bounce-model mismatch vs DART's
     contact solver, the floor any M2 estimator inherits from the bounce model.
 
@@ -79,7 +82,7 @@ def eval_dir(rundir, seeds, fps, sigma0, alpha, bad_frac):
     tr = load(os.path.join(rundir, "traj.csv"), ["t", "x", "y", "z"])
     w_true = true_spin(rundir)
 
-    errs = {"M2_M1": [], "M2_conf": [], "M2_spinknown": []}
+    errs = {"M2_M1": [], "M2_conf": [], "M2_prior": [], "M2_spinknown": []}
     for seed in range(seeds):
         ot, op, cf, _ = make_observations(tr, fps, sigma0, alpha, bad_frac, seed)
         fits = {
@@ -88,6 +91,10 @@ def eval_dir(rundir, seeds, fps, sigma0, alpha, bad_frac):
                                       omega_bound=OMEGA_BOUND),
         }
         if w_true is not None:
+            fits["M2_prior"] = fit_trajectory(ot, op, fit_omega=True,
+                                              omega_bound=OMEGA_BOUND,
+                                              omega_prior=w_true,
+                                              omega_prior_std=60.0)
             fits["M2_spinknown"] = fit_trajectory(ot, op, fit_omega=False,
                                                   fixed_omega=w_true)
         for m, th in fits.items():
@@ -121,8 +128,8 @@ def main():
              "M2_spinknown = noisy fit with the TRUE spin handed in (isolates "
              "the spin-estimation penalty). M2_clean = noise-free fit -> pure "
              "bounce-model mismatch vs DART.\n",
-             "| condition | truth2 x,y (m) | M2_M1 | M2_conf | M2_spinknown | M2_clean |",
-             "|---|---|---|---|---|---|"]
+             "| condition | truth2 x,y (m) | M2_M1 | M2_conf | M2_prior | M2_spinknown | M2_clean |",
+             "|---|---|---|---|---|---|---|"]
     rundirs = [r.rstrip("/") for r in a.rundirs
                if os.path.exists(os.path.join(r, "bounces.csv"))]
     with ProcessPoolExecutor(max_workers=min(len(rundirs), os.cpu_count())) as ex:
@@ -133,18 +140,18 @@ def main():
     for rundir, res in zip(rundirs, all_res):
         name = os.path.basename(rundir)
         if res is None:
-            lines.append(f"| {name} | (1st touchdown off table) | — | — | — | — |")
+            lines.append(f"| {name} | (1st touchdown off table) | — | — | — | — | — |")
             continue
         truth2, errs, clean = res
         cells = []
-        for m in ("M2_M1", "M2_conf", "M2_spinknown"):
+        for m in ("M2_M1", "M2_conf", "M2_prior", "M2_spinknown"):
             if errs.get(m):
                 e = np.array(errs[m])
                 cells.append(f"{np.nanmean(e):.2f} ± {np.nanstd(e):.2f}")
             else:
                 cells.append("—")
         lines.append(f"| {name} | {truth2[0]:.4f}, {truth2[1]:.4f} | "
-                     f"{cells[0]} | {cells[1]} | {cells[2]} | {clean:.2f} |")
+                     f"{cells[0]} | {cells[1]} | {cells[2]} | {cells[3]} | {clean:.2f} |")
 
     text = "\n".join(lines) + "\n"
     print(text)

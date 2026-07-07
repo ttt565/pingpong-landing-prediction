@@ -1,0 +1,17 @@
+Flight-segment residual learning (STRONG rich truth, half-arc, operating-point noise; n=150 serves, 40 held out, label noise 1 cm)
+==========================================================================
+
+  production ladder (mean cm on held-out serves):
+    M_huber                :   42.33
+    + spin prior (MAP)     :    6.17
+    + ridge residual (n=110):    3.96
+
+  residual sample efficiency (labels -> test error cm):
+      10    5.43 ± 0.55
+      20    4.75 ± 0.41
+      40    4.22 ± 0.20
+      80    4.02 ± 0.09
+
+READING
+  - the ladder is compositional: robust loss handles bad frames, the MAP prior restores spin identifiability (42.3 -> 6.2 cm), and the residual regressor absorbs what remains systematic — model mismatch + fit bias — from self-labels alone (6.2 -> 4.0 cm).
+  - this is the original 'physics + learned residual' M1, now with an honest truth (inverse crime broken) and honest labels (1 cm board noise). LIMITATIONS item 1 closes here.

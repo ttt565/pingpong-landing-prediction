@@ -10,7 +10,7 @@ Two independent reviews (summarized below) drove these caveats.
 
 | # | Limitation | Why it matters | Status |
 |---|---|---|---|
-| 1 | **M1 is weighted physics fitting, not residual correction.** M0/M1/M3 all fit `p0,v0,ω` by weighted NLS; only the weights differ. | This tests "weighting vs no weighting," not the proposal's "physics + learned residual." | open (v2) |
+| 1 | **M1 is weighted physics fitting, not residual correction.** M0/M1/M3 all fit `p0,v0,ω` by weighted NLS; only the weights differ. | This tests "weighting vs no weighting," not the proposal's "physics + learned residual." | **done** — `run_prior.py` (fig8): MAP spin prior in the estimator, 8-frame error 130→24.8 cm ≈ spin-known, and a prior LEARNED from 20 warm-up fits matches the ideal one; `run_residual_flight.py` (fig9): physics + learned residual on honest rich truth, ladder 42.3 → 6.2 → **4.0 cm** at the strong-mismatch/half-arc cell |
 | 2 | **Inverse crime.** Truth and predictor use the *same* drag/Magnus equations + parameters, so `M4 = 0 cm`. | Only estimation error is measured; **zero model error** ⇒ says nothing about sim-to-real. | **done** — `run_mismatch.py` (fig7): rich truth (Cd(v), Magnus saturation, spin decay). Full-arc first-landing is nearly immune (M4 ≤ 0.02 cm — the fit re-absorbs the mismatch into biased θ̂, saturation being exactly an ω-rescale); the bias re-emerges in extrapolation (half-arc M4 up to 0.30 cm) and wherever θ̂ is reused (M2 bounce pipeline). Conclusions survive |
 | 3 | **`M3_conf` calibration is baked in:** `confidence = 1/σ · lognormal`. | "90% of oracle" only shows *if* the TrackNet score ≈ true inverse-σ, weighting helps. Circular. | **quantified** — `run_miscalibration.py`: M3 beats Huber only for conf log-noise ≲ 0.6 (γ≥0.5); worse confidence is actively harmful (fig5) |
 | 4 | **Early-prediction error was optimizer blow-up, not clean unobservability.** | The `72 cm` figure came from unbounded `ω` exploding (see below). | corrected here |
@@ -128,14 +128,16 @@ truth first:
 
 ## v2 roadmap (priority order)
 
-1. **Physical constraints** — ~~Jacobian-conditioning / Fisher analysis for
-   observability~~ (**done**, see above); a norm/axis spin prior in the production
-   estimators (beyond box bounds) is still open.
+1. ~~**Physical constraints**~~ — **done**: Fisher analysis (above) + a Gaussian MAP
+   spin prior in `fit_trajectory` (`omega_prior=`, `run_prior.py`, fig8). The prior is
+   learnable from 20 warm-up full-arc fits with no extra sensor (and faster/cheaper
+   from the contact board); its weak direction is exactly the harmless `ω∥v` one.
 2. ~~**Robust baselines**~~ — **done** (Huber + MAD gating; see above). Robust/adaptive
    Kalman and confidence-threshold rejection remain if anyone wants more nails.
 3. ~~**Artificial model-mismatch matrix**~~ — **done** (`run_mismatch.py`, fig7;
-   `ttsim/physics_rich.py`). Re-introducing a real residual-correction M1 is still open
-   (the contact-board ridge is the closest existing piece).
+   `ttsim/physics_rich.py`). ~~Re-introducing a real residual-correction M1~~ — **done**
+   (`run_residual_flight.py`, fig9: robust loss + MAP prior + landing-label ridge,
+   trained on 1 cm-noise self-labels, 42.3 → 4.0 cm under strong mismatch).
 4. ~~**Confidence-miscalibration sweep**~~ — **done** (`run_miscalibration.py`, fig5):
    usable confidence needs log-noise ≲ 0.6 and γ ≳ 0.5; real calibration still needs
    position-labeled arcs.

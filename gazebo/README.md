@@ -118,7 +118,7 @@ Pipeline: fit the pre-bounce arc → integrate to first contact → analytic
 impulse bounce (`ttsim/bounce.py`) → integrate to the second z=R crossing.
 Results: [results_m2.md](results_m2.md).
 
-Three findings worth the trip:
+Four findings worth the trip:
 1. **Calibrate against the backend, not its config**: DART's *effective*
    restitution is **0.777** (measured across all 9 conditions by
    `calibrate_bounce.py`), not the 0.9 in the SDF. Switching E_TABLE to the
@@ -130,6 +130,11 @@ Three findings worth the trip:
    true spin handed in) collapses the error to **3.7–7.8 cm — essentially the
    bounce-model floor** (M2_clean 1.8–7.5 cm). Same lesson as Experiment B:
    the M2 lever is a spin prior, not more precision weighting.
+4. And the lever is now *pulled*: **M2_prior** — the same fit with a Gaussian
+   MAP session prior (σ = 60 rad/s, `fit_trajectory(omega_prior=...)`) —
+   lands at **6.6–14.3 cm**, most of the way from M2_M1 (24–66 cm) to the
+   spin-known reference. A session prior is exactly what warm-up fits or the
+   contact board provide.
 
 ## Route B — rendered cameras (`scripts/run_camera.sh`)
 

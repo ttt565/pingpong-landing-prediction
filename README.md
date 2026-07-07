@@ -101,6 +101,26 @@ So the Phase-1 exit test becomes concrete: **measure H *and* the confidence-vs-p
 calibration from actual TrackNet detections** on a few recorded arcs. Unless the
 confidence is unusually informative, the deployable answer is a robust loss, not M3.
 
+## The production ladder (`run_prior.py` + `run_residual_flight.py`)
+
+What Phase 1 converged on, each step a strict add-on, evaluated in the hardest
+cell (STRONG model mismatch, half-arc observations, 20 % bad frames):
+
+| step | mean landing error | what it fixes |
+|---|---|---|
+| `M_huber` (robust loss) | 42.3 cm | bad frames, no side info needed |
+| + MAP spin prior | **6.2 cm** | spin identifiability (the Fisher floor) |
+| + ridge residual on landing self-labels | **4.0 cm** | systematic model mismatch + fit bias |
+
+The spin prior lives in the estimator (`fit_trajectory(omega_prior=...)`);
+it can be **learned from ~20 warm-up full-arc fits with no extra sensor**
+(`run_prior.py`: learned ≈ ideal prior, 8-frame error 130 → 25 cm ≈
+spin-known — the empirical realization of the fig6 CRLB curves; the weak
+direction of the learned prior is exactly the information-free `ω∥v`, which
+is harmless). The residual step needs only the landing-board labels the
+measurement protocol already assumes (1 cm label noise included; 10 labels
+already give 5.4 cm). See `results/fig8_prior.png` / `fig9_residual_flight.png`.
+
 ## Experiment B — convergence + spin observability (`run_convergence.py`)
 
 Predicts the landing from only the first *k* frames (all fits ω-bounded). Compares `M1`
@@ -127,6 +147,8 @@ run_killer.py          M3 go/no-go: operating point + H sweep + frame-rate sweep
 run_miscalibration.py  confidence-quality thresholds vs the robust baseline (fig5)
 run_observability.py   Fisher/CRLB: rank-2 spin observability, prior value (fig6)
 run_mismatch.py        inverse crime broken: rich truth vs simple predictor (fig7)
+run_prior.py           MAP spin prior in the estimator: learned = ideal (fig8)
+run_residual_flight.py physics + learned residual, honest truth/labels (fig9)
 run_convergence.py     experiment B: convergence + spin observability
 sanity.py              physics realism + timing self-check
 results/               figures + summaries (committed)

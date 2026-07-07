@@ -36,7 +36,8 @@ def _initial_guess(obs_t, obs_p, fit_omega):
 
 
 def fit_trajectory(obs_t, obs_p, weights=None, fit_omega=True, fixed_omega=None,
-                   omega_bound=None, dt_fit=4e-3, loss="linear", f_scale=1.0):
+                   omega_bound=None, dt_fit=4e-3, loss="linear", f_scale=1.0,
+                   omega_prior=None, omega_prior_std=None, prior_scale=0.012):
     """Weighted NLS fit with an analytic (batched finite-diff) Jacobian.
 
     weights are per-frame (length N); None -> uniform. M1 vs M3 differ ONLY here.
@@ -44,6 +45,12 @@ def fit_trajectory(obs_t, obs_p, weights=None, fit_omega=True, fixed_omega=None,
     omega_bound: if set, constrain |omega_i| <= omega_bound rad/s (physical prior).
     loss/f_scale: passed to scipy least_squares — loss="huber" turns the SAME
     estimator into the confidence-free robust baseline (M_huber).
+    omega_prior / omega_prior_std: Gaussian MAP prior on omega (rad/s; scalar or
+    per-component std). Appended as 3 residual rows scaled by prior_scale — the
+    assumed measurement sigma in meters (default ~ good-frame noise) — so the
+    prior term is weighted consistently with the (relative-scale) data term.
+    Fisher analysis (run_observability) shows the omega||v direction carries no
+    information; this prior is what makes it identifiable.
     """
     if weights is None:
         weights = np.ones(len(obs_t))
@@ -54,11 +61,21 @@ def fit_trajectory(obs_t, obs_p, weights=None, fit_omega=True, fixed_omega=None,
     x0 = _initial_guess(obs_t, obs_p, fit_omega)[:nfree]
     steps, xscale = _STEPS[:nfree], _XSCALE[:nfree]
 
+    use_prior = fit_omega and omega_prior is not None
+    if use_prior:
+        p_mu = np.asarray(omega_prior, float)
+        p_sd = np.broadcast_to(np.asarray(omega_prior_std, float), (3,)).astype(float)
+        p_w = prior_scale / p_sd
+        x0[6:9] = p_mu          # start at the prior mean, not at zero spin
+
     def theta_of(x):
         return x if fit_omega else np.concatenate([x, fixed_omega])
 
     def resid(x):
-        return (sw * (predict_positions(theta_of(x), obs_t, dt_fit) - obs_p)).ravel()
+        r = (sw * (predict_positions(theta_of(x), obs_t, dt_fit) - obs_p)).ravel()
+        if use_prior:
+            r = np.concatenate([r, p_w * (x[6:9] - p_mu)])
+        return r
 
     def jac(x):
         base = theta_of(x)
@@ -70,6 +87,10 @@ def fit_trajectory(obs_t, obs_p, weights=None, fit_omega=True, fixed_omega=None,
         J = np.empty((r0.size, nfree))
         for j in range(nfree):
             J[:, j] = ((sw * (preds[j + 1] - obs_p)).ravel() - r0) / steps[j]
+        if use_prior:
+            Jp = np.zeros((3, nfree))
+            Jp[:, 6:9] = np.diag(p_w)
+            J = np.vstack([J, Jp])
         return J
 
     if fit_omega and omega_bound is not None:
@@ -133,6 +154,20 @@ def predict_M_gate(obs_t, obs_p, k_mad=2.5, min_keep=8, **kw):
     """ROBUST BASELINE: the classic 'reject outliers, refit' recipe
     (k tuned like M_huber)."""
     return _landing_xy(fit_trajectory_gated(obs_t, obs_p, k_mad, min_keep))
+
+
+def predict_M_prior(obs_t, obs_p, prior_mu, prior_std, weights=None,
+                    loss="linear", **kw):
+    """MAP estimation with a Gaussian spin prior — the production form of the
+    spin prior called for by the Fisher analysis (LIMITATIONS item 1). The
+    prior can come from the serve-machine spec, accumulated full-arc fits, or
+    contact-board self-supervision."""
+    return _landing_xy(fit_trajectory(obs_t, obs_p, weights=weights,
+                                      fit_omega=True, omega_bound=OMEGA_BOUND,
+                                      loss=loss,
+                                      f_scale=0.015 if loss == "huber" else 1.0,
+                                      omega_prior=prior_mu,
+                                      omega_prior_std=prior_std))
 
 
 def predict_M3_oracle(obs_t, obs_p, sigma_true, **kw):
